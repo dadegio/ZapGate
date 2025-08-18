@@ -1,0 +1,10 @@
+{
+  "/not-found": "app/not-found.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/transactions/page": "app/transactions/page.js",
+  "/content/[id]/page": "app/content/[id]/page.js",
+  "/api/nodes/route": "app/api/nodes/route.js",
+  "/api/create-invoice/route": "app/api/create-invoice/route.js",
+  "/api/pay-invoice/route": "app/api/pay-invoice/route.js"
+}
