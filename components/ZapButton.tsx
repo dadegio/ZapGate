@@ -1,12 +1,11 @@
-//components/zapbutton.tsx
 "use client";
 
 import { useState } from "react";
 
 interface ZapButtonProps {
     amount: number;
-    payerId: string;     // nodo che paga (es. "Carol" o pubkey)
-    receiverId: string;  // nodo che riceve (es. "Alice" o pubkey)
+    payerId: string;     // npub o nome nodo
+    receiverId: string;  // npub o nome nodo
     memo?: string;
 }
 
@@ -16,6 +15,9 @@ export default function ZapButton({ amount, payerId, receiverId, memo }: ZapButt
     const handlePay = async () => {
         try {
             setLoading(true);
+
+            if (!receiverId) throw new Error("ReceiverId mancante");
+            if (!payerId) throw new Error("PayerId mancante");
 
             // 1) Crea invoice sul nodo ricevente
             const invoiceRes = await fetch("/api/create-invoice", {
@@ -31,7 +33,7 @@ export default function ZapButton({ amount, payerId, receiverId, memo }: ZapButt
             if (!invoiceRes.ok) throw new Error("Errore creazione invoice");
 
             const invoice = await invoiceRes.json();
-            if (!invoice.payment_request) throw new Error("Invoice non ricevuta");
+            if (!invoice.payment_request) throw new Error("Invoice non ricevuta dal nodo ricevente");
 
             console.log("⚡ Invoice:", invoice.payment_request);
 
@@ -51,7 +53,7 @@ export default function ZapButton({ amount, payerId, receiverId, memo }: ZapButt
             if (payRes.ok && !payment.payment_error) {
                 alert("✅ Pagamento riuscito!");
             } else {
-                alert("❌ Errore pagamento: " + (payment.error || payment.payment_error));
+                throw new Error(payment.error || payment.payment_error || "Pagamento fallito");
             }
 
         } catch (err) {

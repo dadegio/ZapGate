@@ -1,3 +1,4 @@
+// app/content/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { DEMO_CONTENT } from '../../lib/content';
 

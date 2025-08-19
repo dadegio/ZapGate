@@ -1,4 +1,3 @@
-//create-invoice/route.ts
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -11,10 +10,8 @@ export async function POST(req: Request) {
 
         console.log("📥 [CreateInvoice] Body ricevuto:", { receiverId, amount, memo });
 
-        // Carico la configurazione nodi
+        // Carico configurazione nodi
         const configPath = path.join(process.cwd(), 'nodes-config.json');
-        console.log("📂 [CreateInvoice] Caricamento file nodi da:", configPath);
-
         if (!fs.existsSync(configPath)) {
             console.error("❌ [CreateInvoice] File nodes-config.json non trovato");
             return NextResponse.json({ error: 'Config file mancante' }, { status: 500 });
@@ -23,15 +20,16 @@ export async function POST(req: Request) {
         const nodes = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         console.log("📜 [CreateInvoice] Nodi caricati:", nodes.map((n: any) => n.name || n.pubkey));
 
-        // ✅ Troviamo il nodo destinatario
+        // ✅ Troviamo il nodo destinatario (anche con nostr_pubkey)
         const node = nodes.find((n: any) =>
             n.id?.toLowerCase() === receiverId?.toLowerCase() ||
             n.name?.toLowerCase() === receiverId?.toLowerCase() ||
-            n.pubkey?.toLowerCase() === receiverId?.toLowerCase()
+            n.pubkey?.toLowerCase() === receiverId?.toLowerCase() ||
+            n.nostr_pubkey?.toLowerCase() === receiverId?.toLowerCase()
         );
 
         if (!node) {
-            console.error("❌ [CreateInvoice] Nodo non trovato per id:", receiverId);
+            console.error("❌ [CreateInvoice] Nodo non trovato per receiverId:", receiverId);
             return NextResponse.json({ error: 'Nodo non trovato' }, { status: 404 });
         }
 
@@ -43,15 +41,10 @@ export async function POST(req: Request) {
         // Creazione agent TLS con certificato del nodo
         const agent = new https.Agent({
             ca: node.tls_cert,
-            rejectUnauthorized: true
+            rejectUnauthorized: false // Polar spesso richiede false
         });
 
         console.log("🌍 [CreateInvoice] Chiamata LND →", url);
-        console.log("📦 [CreateInvoice] Headers:", {
-            'Grpc-Metadata-macaroon': node.macaroon?.slice(0, 20) + "...",
-            'Content-Type': 'application/json'
-        });
-        console.log("📝 [CreateInvoice] Body:", payload);
 
         const res = await fetch(url, {
             method: 'POST',

@@ -1,4 +1,3 @@
-//pay-invoice/route.ts
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import https from 'https';
@@ -22,11 +21,12 @@ export async function POST(request: Request) {
         const nodesPath = process.cwd() + '/nodes-config.json';
         const nodes = JSON.parse(fs.readFileSync(nodesPath, 'utf-8'));
 
-        // Trova il nodo mittente
+        // ✅ Trova il nodo mittente (anche con nostr_pubkey)
         const payerNode = nodes.find(
             (n: any) =>
                 n.pubkey?.toLowerCase() === payerId.toLowerCase() ||
-                n.name?.toLowerCase() === payerId.toLowerCase()
+                n.name?.toLowerCase() === payerId.toLowerCase() ||
+                n.nostr_pubkey?.toLowerCase() === payerId.toLowerCase()
         );
 
         if (!payerNode) {
@@ -39,16 +39,11 @@ export async function POST(request: Request) {
         // Setup chiamata LND
         const agent = new https.Agent({
             ca: payerNode.tls_cert,
-            rejectUnauthorized: false,
+            rejectUnauthorized: false, // Polar spesso richiede false
         });
 
         const url = `${payerNode.host}/v1/channels/transactions`;
         console.log("🌍 [PayInvoice] Chiamata LND →", url);
-        console.log("📦 [PayInvoice] Headers:", {
-            'Grpc-Metadata-macaroon': payerNode.macaroon?.slice(0, 20) + "...",
-            'Content-Type': 'application/json'
-        });
-        console.log("📝 [PayInvoice] Body:", { payment_request: paymentRequest });
 
         const res = await fetch(url, {
             method: 'POST',
