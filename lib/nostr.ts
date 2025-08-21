@@ -6,6 +6,8 @@ import {
     signEvent,
     type Event as NostrEvent,
 } from 'nostr-tools'
+
+import { Event } from "nostr-tools";
 import { RELAYS } from './config'
 
 // Pool condiviso
@@ -151,6 +153,34 @@ export async function countPurchases(itemId: string, relays: string[] = RELAYS.m
     });
 }
 
+export async function countActivePurchases(postId: string, relays: string[]): Promise<number> {
+    return new Promise((resolve) => {
+        const lastEvent: Record<string, NostrEvent> = {};
+
+        const sub = pool.sub(relays, [
+            { kinds: [9735, 9736], "#e": [postId] }
+        ]);
+
+        (sub as any).on("event", (event: NostrEvent) => {
+            const payer = event.tags.find((t) => t[0] === "payer")?.[1];
+            if (!payer) return;
+
+            const prev = lastEvent[payer];
+            // salva sempre quello più recente
+            if (!prev || event.created_at > prev.created_at) {
+                lastEvent[payer] = event;
+            }
+        });
+
+        sub.on("eose", () => {
+            // conta solo quelli il cui ultimo evento è un acquisto (9735)
+            const stillActive = Object.values(lastEvent).filter((ev) => ev.kind === 9735);
+            resolve(stillActive.length);
+            sub.unsub();
+        });
+    });
+}
+
 
 /**
  * Crea un evento di eliminazione (kind 5)
@@ -164,4 +194,22 @@ export function createDeleteEvent(
     return createEvent(5, reason, tags, sk)
 }
 
+/**
+ * Crea un evento di unsubscribe (kind 9736 personalizzato)
+ */
+export function createUnsubscribeEvent(
+    postId: string,
+    userPubkey: string,
+    sk?: Uint8Array
+) {
+    return createEvent(
+        9736,
+        `Unsubscribe from post ${postId}`,
+        [
+            ["e", postId],
+            ["p", userPubkey]
+        ],
+        sk
+    );
+}
 

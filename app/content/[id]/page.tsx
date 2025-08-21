@@ -1,4 +1,5 @@
 // app/content/[id]/page.tsx
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -13,6 +14,8 @@ interface Post {
     fullContent: string;
     priceSats: number;
     authorNpub: string;
+    preview?: string;
+    relay: string[];
 }
 
 export default function ContentPage() {
@@ -38,28 +41,31 @@ export default function ContentPage() {
 
         const relayUrls = RELAYS.map(r => r.url);
 
+
         const sub = pool.sub(
             relayUrls,
             [{ ids: [params.id as string] }]
         );
 
-
-        sub.on('event', (event) => {
-            console.log('📥 Contenuto caricato:', event);
+        (sub as any).on("event", (event: any, relayUrl: string) => {
+            console.log("Evento da", relayUrl, event);
 
             setItem({
                 id: event.id,
-                title: event.tags.find((t) => t[0] === 'title')?.[1] || 'Senza titolo',
+                title: event.tags.find((t: string[]) => t[0] === "title")?.[1] || "Senza titolo",
                 fullContent: event.content,
                 priceSats: parseInt(
-                    event.tags.find((t) => t[0] === 'price_sats')?.[1] || '0',
+                    event.tags.find((t: string[]) => t[0] === "price_sats")?.[1] || "0",
                     10
                 ),
                 authorNpub: event.pubkey,
+                relay: [relayUrl],
             });
 
-            sub.unsub(); // chiudi la sub dopo aver trovato l’evento
+            (sub as any).unsub();
         });
+
+
 
         sub.on('eose', () => {
             console.log('🚫 Nessun evento trovato per questo ID');

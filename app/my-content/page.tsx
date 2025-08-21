@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createEvent } from "../../lib/nostr";
+import { RELAYS } from "../../lib/config";
+import { relayInit } from "nostr-tools";
 
 interface Post {
     id: string;
@@ -12,17 +15,16 @@ interface Post {
 
 export default function MyContentPage() {
     const [unlockedPosts, setUnlockedPosts] = useState<Post[]>([]);
+    const [loggedUser, setLoggedUser] = useState<any>(null);
 
     const loadUnlockedPosts = () => {
         try {
             const unlockedIds: string[] = JSON.parse(
                 localStorage.getItem("unlockedContent") || "[]"
             );
-
             const savedPosts: Post[] = JSON.parse(
                 localStorage.getItem("savedPosts") || "[]"
             );
-
             const posts = savedPosts.filter((p) => unlockedIds.includes(p.id));
             setUnlockedPosts(posts);
         } catch (err) {
@@ -31,7 +33,7 @@ export default function MyContentPage() {
         }
     };
 
-    const removePost = (id: string) => {
+    const removePost = async (id: string) => {
         // Rimuove da localStorage
         const unlockedIds: string[] = JSON.parse(
             localStorage.getItem("unlockedContent") || "[]"
@@ -39,17 +41,37 @@ export default function MyContentPage() {
         const updated = unlockedIds.filter((x) => x !== id);
         localStorage.setItem("unlockedContent", JSON.stringify(updated));
 
-        // Aggiorna lo stato locale
         setUnlockedPosts((prev) => prev.filter((p) => p.id !== id));
+
+        try {
+            if (!loggedUser) return;
+
+            // 🔥 Pubblica evento kind 9736 (unsubscribe)
+            const ev = createEvent(
+                9736,
+                "unsubscribe",
+                [["e", id], ["payer", loggedUser.npub]],
+                loggedUser.privkey
+            );
+
+            for (const r of RELAYS) {
+                const relay = relayInit(r.url);
+                await relay.connect();
+                relay.publish(ev);
+            }
+
+            console.log("📤 Evento 9736 pubblicato per post", id);
+        } catch (err) {
+            console.error("Errore pubblicazione 9736:", err);
+        }
     };
 
     useEffect(() => {
         loadUnlockedPosts();
-
-        // 🔄 aggiorna se cambia localStorage (es. in un’altra scheda)
         const onStorageChange = () => loadUnlockedPosts();
         window.addEventListener("storage", onStorageChange);
-
+        const data = sessionStorage.getItem("loggedInUser");
+        if (data) setLoggedUser(JSON.parse(data));
         return () => {
             window.removeEventListener("storage", onStorageChange);
         };
@@ -76,7 +98,6 @@ export default function MyContentPage() {
                                 Autore: {item.authorNpub?.slice(0, 12) || "sconosciuto"}…
                             </p>
 
-                            {/* 🔗 Link al post originale */}
                             <a
                                 href={`/content/${item.id}`}
                                 className="inline-block mt-3 text-purple-600 hover:text-purple-800 underline text-sm"
@@ -84,7 +105,6 @@ export default function MyContentPage() {
                                 Vai al post →
                             </a>
 
-                            {/* 🗑️ Bottone rimozione */}
                             <button
                                 onClick={() => removePost(item.id)}
                                 className="ml-4 inline-block text-red-500 hover:text-red-700 text-sm"

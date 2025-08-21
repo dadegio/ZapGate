@@ -1,17 +1,18 @@
+// app/login/page.tsx
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import nostrMap from '../../nostr-map.json';
 
 declare global {
     interface Window {
         nostr?: {
             getPublicKey: () => Promise<string>;
-            signEvent: (event: any) => Promise<any>; // 👈 aggiungi questo
+            signEvent: (event: any) => Promise<any>;
         };
     }
 }
-
 
 export default function LoginPage() {
     const [pubkey, setPubkey] = useState<string | null>(null);
@@ -23,32 +24,30 @@ export default function LoginPage() {
                 throw new Error("Nessun provider Nostr trovato. Installa Nos2x o Alby.");
             }
 
-            // Ottieni chiave pubblica dall’estensione (NIP-07)
+            // 🔑 Ottieni la chiave pubblica dall’estensione (hex)
             const npubHex = await window.nostr.getPublicKey();
+            setPubkey(npubHex);
 
-            // Convertila in npub bech32
-            // Nota: se ti serve puoi usare nostr-tools nip19
-            const npub = npubHex.startsWith("npub") ? npubHex : npubHex;
+            // 🔎 Trova alias (nome) dal mapping
+            const nodeName = (nostrMap as any)[npubHex];
+            if (!nodeName) throw new Error("Account Nostr non collegato a un nodo");
 
-            setPubkey(npub);
-
-            // Mappa al nodo Polar
-            const nodeId = (nostrMap as any)[npub];
-            if (!nodeId) throw new Error("Account non collegato a nodo Polar");
-
-            // Carica nodi disponibili
+            // 📡 Carica nodi dal backend
             const res = await fetch("/api/nodes");
             const nodes = await res.json();
+
+            // ✅ Trova nodo: per nome (da mappa) oppure per nostr_pubkey diretto
             const node = nodes.find((n: any) =>
-                n.id?.toLowerCase() === nodeId.toLowerCase() ||
-                n.name?.toLowerCase() === nodeId.toLowerCase() ||
-                n.pubkey?.toLowerCase() === nodeId.toLowerCase()
+                n.name?.toLowerCase() === nodeName.toLowerCase() ||
+                n.nostr_pubkey?.toLowerCase() === npubHex.toLowerCase()
             );
 
             if (!node) throw new Error("Nodo non trovato per questo account");
 
-            const loggedUser = { npub, node };
+            // 🗝️ Salva utente loggato
+            const loggedUser = { npub: npubHex, node };
             sessionStorage.setItem("loggedInUser", JSON.stringify(loggedUser));
+
             window.location.href = "/";
         } catch (err: any) {
             console.error("❌ Login error:", err);

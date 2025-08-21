@@ -1,3 +1,5 @@
+// app/api/pay-invoice/route.ts
+
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import https from 'https';
@@ -21,20 +23,17 @@ export async function POST(request: Request) {
         const nodesPath = process.cwd() + '/nodes-config.json';
         const nodes = JSON.parse(fs.readFileSync(nodesPath, 'utf-8'));
 
-        // ✅ Trova il nodo mittente (anche con nostr_pubkey)
+        // ✅ Trova il nodo mittente solo con nostr_pubkey
         const payerNode = nodes.find(
-            (n: any) =>
-                n.pubkey?.toLowerCase() === payerId.toLowerCase() ||
-                n.name?.toLowerCase() === payerId.toLowerCase() ||
-                n.nostr_pubkey?.toLowerCase() === payerId.toLowerCase()
+            (n: any) => n.nostr_pubkey?.toLowerCase() === payerId.toLowerCase()
         );
 
         if (!payerNode) {
-            console.error('❌ [PayInvoice] Nodo mittente non trovato per id:', payerId);
+            console.error('❌ [PayInvoice] Nodo mittente non trovato per pubkey:', payerId);
             return NextResponse.json({ error: 'Nodo mittente non trovato' }, { status: 404 });
         }
 
-        console.log("✅ [PayInvoice] Nodo trovato:", payerNode.name || payerNode.pubkey);
+        console.log("✅ [PayInvoice] Nodo trovato:", payerNode.nostr_pubkey);
 
         // Setup chiamata LND
         const agent = new https.Agent({

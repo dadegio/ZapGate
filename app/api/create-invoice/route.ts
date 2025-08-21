@@ -1,3 +1,5 @@
+// app/api/create-invoice/route.ts
+
 import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -18,14 +20,10 @@ export async function POST(req: Request) {
         }
 
         const nodes = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        console.log("📜 [CreateInvoice] Nodi caricati:", nodes.map((n: any) => n.name || n.pubkey));
 
-        // ✅ Troviamo il nodo destinatario (anche con nostr_pubkey)
-        const node = nodes.find((n: any) =>
-            n.id?.toLowerCase() === receiverId?.toLowerCase() ||
-            n.name?.toLowerCase() === receiverId?.toLowerCase() ||
-            n.pubkey?.toLowerCase() === receiverId?.toLowerCase() ||
-            n.nostr_pubkey?.toLowerCase() === receiverId?.toLowerCase()
+        // ✅ Troviamo il nodo destinatario SOLO tramite nostr_pubkey
+        const node = nodes.find(
+            (n: any) => n.nostr_pubkey?.toLowerCase() === receiverId?.toLowerCase()
         );
 
         if (!node) {
@@ -33,7 +31,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Nodo non trovato' }, { status: 404 });
         }
 
-        console.log("✅ [CreateInvoice] Nodo trovato:", node.name || node.pubkey);
+        console.log("✅ [CreateInvoice] Nodo trovato per pubkey:", node.nostr_pubkey);
 
         const url = `${node.host}/v1/invoices`;
         const payload = { value: amount, memo: memo || 'Zap payment' };
@@ -60,7 +58,10 @@ export async function POST(req: Request) {
         console.log("📩 [CreateInvoice] Risposta LND:", res.status, res.statusText, text);
 
         if (!res.ok) {
-            return NextResponse.json({ error: 'Failed to create invoice', details: text }, { status: res.status });
+            return NextResponse.json(
+                { error: 'Failed to create invoice', details: text },
+                { status: res.status }
+            );
         }
 
         const data = JSON.parse(text);
