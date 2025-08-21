@@ -31,10 +31,22 @@ export default function MyContentPage() {
         }
     };
 
+    const removePost = (id: string) => {
+        // Rimuove da localStorage
+        const unlockedIds: string[] = JSON.parse(
+            localStorage.getItem("unlockedContent") || "[]"
+        );
+        const updated = unlockedIds.filter((x) => x !== id);
+        localStorage.setItem("unlockedContent", JSON.stringify(updated));
+
+        // Aggiorna lo stato locale
+        setUnlockedPosts((prev) => prev.filter((p) => p.id !== id));
+    };
+
     useEffect(() => {
         loadUnlockedPosts();
 
-        // 🔄 aggiorna anche se cambia localStorage (es. in un’altra scheda)
+        // 🔄 aggiorna se cambia localStorage (es. in un’altra scheda)
         const onStorageChange = () => loadUnlockedPosts();
         window.addEventListener("storage", onStorageChange);
 
@@ -59,10 +71,26 @@ export default function MyContentPage() {
                             className="border bg-white rounded-lg shadow p-6 text-left"
                         >
                             <h2 className="text-xl font-bold mb-2">{item.title}</h2>
-                            <p className="text-gray-700">{item.fullContent}</p>
+                            <p className="text-gray-700 mb-2">{item.fullContent}</p>
                             <p className="mt-2 text-sm text-gray-500">
                                 Autore: {item.authorNpub?.slice(0, 12) || "sconosciuto"}…
                             </p>
+
+                            {/* 🔗 Link al post originale */}
+                            <a
+                                href={`/content/${item.id}`}
+                                className="inline-block mt-3 text-purple-600 hover:text-purple-800 underline text-sm"
+                            >
+                                Vai al post →
+                            </a>
+
+                            {/* 🗑️ Bottone rimozione */}
+                            <button
+                                onClick={() => removePost(item.id)}
+                                className="ml-4 inline-block text-red-500 hover:text-red-700 text-sm"
+                            >
+                                Rimuovi ❌
+                            </button>
                         </div>
                     ))}
                 </div>

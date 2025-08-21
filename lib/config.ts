@@ -1,5 +1,7 @@
-export const MODE: 'live' | 'regtest' = 'regtest'; // Polar usa regtest
-
+// lib/config.ts
 export const RELAYS = [
-    "ws://localhost:7000" // relay Docker privato
+    { name: "Relay1", url: "ws://localhost:7000" },
+    { name: "Relay2", url: "ws://localhost:7001" },
+    { name: "Relay3", url: "ws://localhost:7002" },
 ];
+

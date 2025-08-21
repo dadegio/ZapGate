@@ -11,6 +11,9 @@ import { RELAYS } from './config'
 // Pool condiviso
 export const pool = new SimplePool()
 
+// 🔗 Utility: array di soli URL (stringhe)
+const relayUrls = RELAYS.map(r => r.url)
+
 /**
  * Utils: Uint8Array -> hex string
  */
@@ -114,31 +117,30 @@ export function createZapReceipt({
  * Pubblica un evento su tutti i relay
  */
 export async function publishEvent(ev: NostrEvent): Promise<void> {
-    let signed = ev;
+    let signed = ev
 
     // se ho NIP-07 uso quello
     if ((window as any).nostr) {
-        signed = await (window as any).nostr.signEvent(ev);
+        signed = await (window as any).nostr.signEvent(ev)
     } else {
-        console.warn("⚠ Nessun provider nostr (NIP-07), uso sk random");
-        // fallback: firma locale
-        signed.sig = signEvent(ev, ""); // se hai secretKey
+        console.warn("⚠ Nessun provider nostr (NIP-07), uso sk random")
+        // fallback: firma locale (⚠ se vuoi usa la tua sk qui)
+        signed.sig = signEvent(ev, "")
     }
 
-    const pubs = pool.publish(RELAYS, signed);
-    await Promise.all(pubs);
+    // ✅ ora passo solo string[]
+    const pubs = pool.publish(relayUrls, signed)
+    await Promise.all(pubs)
 }
 
 // 🔢 Conta il numero di zapReceipt (9735) legati a un contenuto
-export async function countPurchases(itemId: string): Promise<number> {
+export async function countPurchases(itemId: string, relays: string[] = RELAYS.map(r => r.url)): Promise<number> {
     return new Promise((resolve) => {
         let count = 0;
-        const sub = pool.sub(
-            RELAYS,
-            [{ kinds: [9735], "#e": [itemId] }]
-        );
+        const sub = pool.sub(relays, [{ kinds: [9735], "#e": [itemId] }]);
 
-        sub.on("event", () => {
+        sub.on("event", (event) => {
+            console.log("📩 Zap trovato:", event);
             count++;
         });
 
@@ -149,6 +151,7 @@ export async function countPurchases(itemId: string): Promise<number> {
     });
 }
 
+
 /**
  * Crea un evento di eliminazione (kind 5)
  */
@@ -157,6 +160,8 @@ export function createDeleteEvent(
     reason = "deleted",
     sk?: Uint8Array
 ): NostrEvent {
-    const tags = [["e", eventId], ["reason", reason]];
-    return createEvent(5, reason, tags, sk);
+    const tags = [["e", eventId], ["reason", reason]]
+    return createEvent(5, reason, tags, sk)
 }
+
+

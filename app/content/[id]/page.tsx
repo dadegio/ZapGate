@@ -36,10 +36,13 @@ export default function ContentPage() {
         if (!params?.id) return;
         if (!loggedUser) return;
 
+        const relayUrls = RELAYS.map(r => r.url);
+
         const sub = pool.sub(
-            RELAYS,
-            [{ ids: [params.id as string] }] // filtro per ID evento
+            relayUrls,
+            [{ ids: [params.id as string] }]
         );
+
 
         sub.on('event', (event) => {
             console.log('📥 Contenuto caricato:', event);
@@ -90,7 +93,11 @@ export default function ContentPage() {
             </h1>
 
             <div className="bg-white/90 rounded-2xl shadow-lg p-6">
-                <ContentCard item={item} loggedUser={loggedUser} />
+                <ContentCard
+                    item={item}
+                    loggedUser={loggedUser}
+                    isAuthor={loggedUser?.npub === item.authorNpub}
+                />
             </div>
         </div>
     );

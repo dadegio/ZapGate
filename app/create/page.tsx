@@ -5,31 +5,28 @@ import { useRouter } from 'next/navigation';
 import { RELAYS } from '../../lib/config';
 import { relayInit } from 'nostr-tools';
 
-function getErrorMessage(err: unknown): string {
-    if (err instanceof Error) return err.message;
-    if (typeof err === "string") return err;
-    try {
-        return JSON.stringify(err);
-    } catch {
-        return String(err);
-    }
-}
-
 export default function CreatePage() {
     const router = useRouter();
-    const [title, setTitle] = useState("");
-    const [fullContent, setFullContent] = useState("");
+    const [title, setTitle] = useState('');
+    const [fullContent, setFullContent] = useState('');
     const [priceSats, setPriceSats] = useState(0);
     const [loggedUser, setLoggedUser] = useState<any>(null);
+    const [selectedRelays, setSelectedRelays] = useState<string[]>([]);
 
     useEffect(() => {
-        const stored = sessionStorage.getItem("loggedInUser");
+        const stored = sessionStorage.getItem('loggedInUser');
         if (stored) {
             setLoggedUser(JSON.parse(stored));
         } else {
-            router.push("/login");
+            router.push('/login');
         }
     }, [router]);
+
+    const toggleRelay = (url: string) => {
+        setSelectedRelays((prev) =>
+            prev.includes(url) ? prev.filter((r) => r !== url) : [...prev, url]
+        );
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,7 +34,7 @@ export default function CreatePage() {
 
         try {
             if (!window.nostr) {
-                alert("Nessun provider Nostr trovato (Alby, nos2x, ecc.)");
+                alert('Nessun provider Nostr trovato (Alby, nos2x, ecc.)');
                 return;
             }
 
@@ -47,29 +44,28 @@ export default function CreatePage() {
                 pubkey,
                 created_at: Math.floor(Date.now() / 1000),
                 tags: [
-                    ["title", title],
-                    ["price_sats", String(priceSats)],
-                    ["ln_pubkey", loggedUser.node?.pubkey || ""],
+                    ['title', title],
+                    ['price_sats', String(priceSats)],
+                    ['ln_pubkey', loggedUser.node?.pubkey || ''],
                 ],
                 content: fullContent,
             };
 
             const signedEvent = await window.nostr.signEvent(eventTemplate);
 
-            // Pubblica su tutti i relay
-            for (const url of RELAYS) {
+            // Pubblica solo sui relay scelti
+            for (const url of selectedRelays) {
                 const relay = relayInit(url);
                 await relay.connect();
                 console.log(`✅ Pubblico su ${url}`);
                 relay.publish(signedEvent);
             }
 
-            alert("✅ Post pubblicato su Nostr!");
-            router.push("/");
+            alert('✅ Post pubblicato su Nostr!');
+            router.push('/');
         } catch (err) {
-            console.error("❌ Errore pubblicazione:", err);
-            const msg = err instanceof Error ? err.message : JSON.stringify(err);
-            alert("Errore pubblicazione: " + msg);
+            console.error('❌ Errore pubblicazione:', err);
+            alert('Errore pubblicazione: ' + (err as any).message);
         }
     };
 
@@ -102,6 +98,23 @@ export default function CreatePage() {
                         required
                         className="w-full border border-gray-300 rounded-lg px-4 py-2"
                     />
+
+                    {/* ✅ Checkbox per i relay */}
+                    <fieldset className="space-y-2">
+                        <legend className="font-medium">Seleziona relay</legend>
+                        {RELAYS.map((r) => (
+                            <label key={r.url} className="block">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedRelays.includes(r.url)}
+                                    onChange={() => toggleRelay(r.url)}
+                                    className="mr-2"
+                                />
+                                {r.name}
+                            </label>
+                        ))}
+                    </fieldset>
+
                     <button
                         type="submit"
                         className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition"

@@ -1,36 +1,49 @@
+// ContentCard.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { zapPayment } from '../lib/zaps';
-import { countPurchases, pool, publishEvent, createDeleteEvent } from '../lib/nostr';
-import { RELAYS } from "../lib/config";
+import { countPurchases, publishEvent, createDeleteEvent } from '../lib/nostr';
 
-export default function ContentCard({ item, loggedUser }: { item: any; loggedUser: any }) {
+interface Post {
+    id: string;
+    title: string;
+    fullContent: string;
+    priceSats: number;
+    authorNpub: string;
+    preview?: string;
+    relay: string[];
+}
+
+export default function ContentCard({
+                                        item,
+                                        loggedUser,
+                                        isAuthor,
+                                    }: {
+    item: Post;
+    loggedUser: any;
+    isAuthor?: boolean;   // 👈 aggiunto qui
+}) {
     const [unlocked, setUnlocked] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purchaseCount, setPurchaseCount] = useState<number | null>(null);
 
     useEffect(() => {
         const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
-        if (unlockedContent.includes(item.id)) {
+        if (unlockedContent.includes(item.id) || isAuthor) {
             setUnlocked(true);
         }
 
-        // Se autore → conta quante volte è stato comprato
-        if (loggedUser?.npub === item.authorNpub) {
+        if (isAuthor) {
             countPurchases(item.id).then(setPurchaseCount);
         }
-    }, [item.id, loggedUser?.npub, item.authorNpub]);
+    }, [item.id, isAuthor]);
 
     const handleZap = async () => {
         try {
             setLoading(true);
 
-            if (!item.authorNpub) {
-                throw new Error(`Item ${item.id} senza authorNpub, impossibile zapparlo`);
-            }
-            if (!loggedUser?.npub) {
-                throw new Error("Utente loggato senza npub valido");
-            }
+            if (!item.authorNpub) throw new Error(`Item ${item.id} senza authorNpub`);
+            if (!loggedUser?.npub) throw new Error("Utente loggato senza npub valido");
 
             const { zapRequest, zapReceipt } = await zapPayment(
                 loggedUser.npub,
@@ -64,27 +77,22 @@ export default function ContentCard({ item, loggedUser }: { item: any; loggedUse
     };
 
     const handleDeleteCheck = async () => {
-        const count = await countPurchases(item.id);
+        const count = await countPurchases(item.id, item.relay); // usa tutti i relay dove esiste il post
         if (count === 0) {
-            console.log("🗑 Nessuno ha comprato → posso eliminare");
-
-            // 🔥 creo evento di delete
             const deleteEvent = createDeleteEvent(item.id, "Autore ha eliminato il post");
             await publishEvent(deleteEvent);
-
-            alert("✅ Post eliminato dai relay (kind 5 pubblicato)");
+            alert("✅ Post eliminato");
         } else {
-            alert("❌ Non puoi eliminare: il contenuto è già stato acquistato");
+            alert(`❌ Non puoi eliminare: già acquistato (${count} volte)`);
         }
     };
 
     return (
         <div className="border p-4 rounded bg-white shadow mb-4">
             <h2 className="text-lg font-bold">{item.title}</h2>
-            <p>{unlocked ? item.fullContent : item.preview}</p>
+            <p>{unlocked ? item.fullContent : item.preview || "🔒 Contenuto bloccato"}</p>
 
-            {/* Bottone sblocco solo se NON sbloccato */}
-            {!unlocked && (
+            {!unlocked && !isAuthor && (
                 <button
                     onClick={handleZap}
                     disabled={loading}
@@ -94,8 +102,7 @@ export default function ContentCard({ item, loggedUser }: { item: any; loggedUse
                 </button>
             )}
 
-            {/* Se autore → mostra contatore + tasto elimina */}
-            {loggedUser?.npub === item.authorNpub && (
+            {isAuthor && (
                 <div className="mt-2">
                     {purchaseCount !== null && (
                         <p className="text-sm text-gray-500">
@@ -116,7 +123,6 @@ export default function ContentCard({ item, loggedUser }: { item: any; loggedUse
 
 /**
  * @TODO
- * delete da migliorare
- * da sbloccati poter vedere la pagina dell'articolo
- * chi crea non li vede in home e non deve comprarli
- * */
+ * migliora elimina
+ * migliora profilo
+ * migliora transactions*/
