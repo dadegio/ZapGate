@@ -1,5 +1,7 @@
 'use client';
+
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';  // ✅ hook corretto
 import { zapPayment } from '../lib/zaps';
 import { countActivePurchases, createDeleteEvent, publishEvent } from '../lib/nostr';
 
@@ -20,18 +22,26 @@ interface Post {
 }
 
 export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardProps) {
+    const router = useRouter(); // ✅ ora funziona
     const [unlocked, setUnlocked] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purchaseCount, setPurchaseCount] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // 🔍 inizializza stato sbloccato e conta acquisti attivi
+    // ✅ funzione per mostrare toast
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    // 🔍 inizializza stato sbloccato e conteggio acquisti
     useEffect(() => {
         const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
         if (unlockedContent.includes(item.id) || isAuthor) {
             setUnlocked(true);
         }
-
         if (isAuthor) {
             countActivePurchases(item.id, item.relays).then(setPurchaseCount);
         }
@@ -69,8 +79,8 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
             }
 
             setUnlocked(true);
+            showToast("✅ Contenuto sbloccato con successo!");
 
-            // aggiorna conteggio attivo
             if (isAuthor) {
                 const newCount = await countActivePurchases(item.id, item.relays);
                 setPurchaseCount(newCount);
@@ -78,44 +88,46 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
 
         } catch (err) {
             console.error("❌ Errore pagamento:", err);
-            alert("Errore pagamento: " + (err as Error).message);
+            showToast("Errore pagamento: " + (err as Error).message, 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDeleteCheck = async () => {
+    const handleDelete = async () => {
         if (!window.nostr) {
-            alert("❌ Nessun provider Nostr trovato (Alby, nos2x, ecc.)");
+            showToast("❌ Nessun provider Nostr trovato", "error");
             return;
         }
-
-        if (!confirm("Vuoi davvero eliminare questo post?")) return;
         setIsDeleting(true);
 
         try {
-            // controlla prima se ci sono ancora acquirenti
             const activeCount = await countActivePurchases(item.id, item.relays);
             if (activeCount > 0) {
-                alert("❌ Impossibile eliminare: ci sono ancora utenti che hanno acquistato.");
+                showToast("❌ Impossibile eliminare: ci sono ancora utenti che hanno acquistato.", "error");
                 return;
             }
 
-            // pubblica evento delete
             const ev = createDeleteEvent(item.id, "delete");
             await publishEvent(ev);
 
-            alert("✅ Post eliminato!");
+            showToast("✅ Post eliminato!");
+
+            // 👇 redirect in home dopo 1.5s
+            setTimeout(() => {
+                router.push("/");
+            }, 500);
         } catch (err: any) {
             console.error("Errore eliminazione:", err);
-            alert("Errore eliminazione: " + (err.message || JSON.stringify(err)));
+            showToast("Errore eliminazione: " + (err.message || JSON.stringify(err)), "error");
         } finally {
             setIsDeleting(false);
+            setShowConfirmDelete(false);
         }
     };
 
     return (
-        <div className="border p-4 rounded bg-white shadow mb-4">
+        <div className="border p-4 rounded bg-white shadow mb-4 relative">
             <h2 className="text-lg font-bold">{item.title}</h2>
             <p>{unlocked ? item.fullContent : item.preview || "🔒 Contenuto bloccato"}</p>
 
@@ -134,13 +146,41 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
                     {purchaseCount !== null && (
                         <p className="text-sm text-gray-500">🔢 Acquisti attivi: {purchaseCount}</p>
                     )}
-                    <button
-                        onClick={handleDeleteCheck}
-                        disabled={isDeleting}
-                        className="px-4 py-2 rounded mt-2 bg-red-500 text-white hover:bg-red-600"
-                    >
-                        {isDeleting ? "Eliminazione..." : "🗑 Elimina"}
-                    </button>
+
+                    {!showConfirmDelete ? (
+                        <button
+                            onClick={() => setShowConfirmDelete(true)}
+                            className="px-4 py-2 rounded mt-2 bg-red-500 text-white hover:bg-red-600"
+                        >
+                            🗑 Elimina
+                        </button>
+                    ) : (
+                        <div className="flex items-center gap-2 mt-2">
+                            <button
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                                className="px-3 py-1 bg-red-600 text-white rounded"
+                            >
+                                {isDeleting ? "..." : "Conferma"}
+                            </button>
+                            <button
+                                onClick={() => setShowConfirmDelete(false)}
+                                className="px-3 py-1 bg-gray-300 rounded"
+                            >
+                                Annulla
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ✅ Toast */}
+            {toast && (
+                <div
+                    className={`fixed top-5 right-5 px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition transform animate-fadeIn
+                        ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                    {toast.message}
                 </div>
             )}
         </div>

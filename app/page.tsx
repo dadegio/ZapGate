@@ -100,15 +100,22 @@ export default function Page() {
                     }
 
                     // nuovo post
+                    const previewText = event.content
+                        .split(" ")
+                        .slice(0, 20) // ✅ prendi solo le prime 20 parole
+                        .join(" ")
+                        .concat("...")
+
                     const post: Post = {
                         id: event.id,
                         title: titleTag?.[1] || 'Senza titolo',
-                        preview: '🔒 Contenuto bloccato. Invia uno zap per sbloccare!',
+                        preview: previewText, // ✅ preview dinamica
                         fullContent: event.content,
                         priceSats: priceTag ? parseInt(priceTag[1]) : 0,
                         authorNpub: event.pubkey,
                         relays: [url],
                     }
+
 
                     return [post, ...prev]
                 })

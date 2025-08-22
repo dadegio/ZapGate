@@ -1,5 +1,3 @@
-// app/create/page.tsx
-
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -14,6 +12,7 @@ export default function CreatePage() {
     const [priceSats, setPriceSats] = useState(0)
     const [loggedUser, setLoggedUser] = useState<any>(null)
     const [selectedRelays, setSelectedRelays] = useState<string[]>([])
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
     useEffect(() => {
         const stored = sessionStorage.getItem('loggedInUser')
@@ -30,13 +29,18 @@ export default function CreatePage() {
         )
     }
 
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type })
+        setTimeout(() => setToast(null), 3000) // chiude dopo 3s
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!loggedUser) return
 
         try {
             if (!window.nostr) {
-                alert('Nessun provider Nostr trovato (Alby, nos2x, ecc.)')
+                showToast('❌ Nessun provider Nostr trovato (Alby, nos2x, ecc.)', 'error')
                 return
             }
 
@@ -62,11 +66,11 @@ export default function CreatePage() {
                 relay.publish(signedEvent)
             }
 
-            alert('✅ Post pubblicato su Nostr!')
-            router.push('/')
+            showToast('✅ Post pubblicato su Nostr!', 'success')
+            setTimeout(() => router.push('/'), 1500) // vai in home dopo 1.5s
         } catch (err) {
             console.error('❌ Errore pubblicazione:', err)
-            alert('Errore pubblicazione: ' + (err as any).message)
+            showToast('Errore pubblicazione: ' + (err as any).message, 'error')
         }
     }
 
@@ -79,40 +83,34 @@ export default function CreatePage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Titolo */}
-                    <div>
-                        <input
-                            type="text"
-                            placeholder="Titolo accattivante ✨"
-                            value={title}
-                            onChange={e => setTitle(e.target.value)}
-                            required
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        placeholder="Titolo accattivante ✨"
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        required
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
 
                     {/* Contenuto */}
-                    <div>
-            <textarea
-                placeholder="Scrivi qui il tuo contenuto completo..."
-                value={fullContent}
-                onChange={e => setFullContent(e.target.value)}
-                required
-                rows={6}
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
-                    </div>
+                    <textarea
+                        placeholder="Scrivi qui il tuo contenuto completo..."
+                        value={fullContent}
+                        onChange={e => setFullContent(e.target.value)}
+                        required
+                        rows={6}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
 
                     {/* Prezzo */}
-                    <div>
-                        <input
-                            type="number"
-                            placeholder="Prezzo in sats ⚡"
-                            value={priceSats}
-                            onChange={e => setPriceSats(Number(e.target.value))}
-                            required
-                            className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        />
-                    </div>
+                    <input
+                        type="number"
+                        placeholder="Prezzo in sats ⚡"
+                        value={priceSats}
+                        onChange={e => setPriceSats(Number(e.target.value))}
+                        required
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
 
                     {/* Relay */}
                     <fieldset className="space-y-3">
@@ -144,6 +142,16 @@ export default function CreatePage() {
                     </button>
                 </form>
             </div>
+
+            {/* ✅ Toast notifiche */}
+            {toast && (
+                <div
+                    className={`fixed top-5 right-5 px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition transform animate-fadeIn
+                        ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
+                >
+                    {toast.message}
+                </div>
+            )}
         </div>
     )
 }
