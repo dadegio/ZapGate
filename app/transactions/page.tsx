@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 export default function TransactionsPage() {
     const [zapHistory, setZapHistory] = useState<any[]>([]);
     const [eventHistory, setEventHistory] = useState<any[]>([]);
-    const [filter, setFilter] = useState<"zapRequest" | "zapReceipt" | "other">("zapRequest");
+    const [filter, setFilter] = useState<"zapRequest" | "zapReceipt" | "unsubscribe" | "other">("zapRequest");
 
     useEffect(() => {
         const zapData = localStorage.getItem("zapHistory");
@@ -34,6 +34,7 @@ export default function TransactionsPage() {
                 >
                     <option value="zapRequest">⚡ ZapRequest</option>
                     <option value="zapReceipt">📩 ZapReceipt</option>
+                    <option value="unsubscribe">❌ Unsubscribe</option>
                     <option value="other">🌀 Altri Eventi</option>
                 </select>
             </div>
@@ -103,33 +104,69 @@ export default function TransactionsPage() {
                     </section>
                 )}
 
+                {/* 🔹 UNSUBSCRIBE (kind 9736) */}
+                {filter === "unsubscribe" && (
+                    <section>
+                        <h2 className="text-2xl font-bold text-red-700 mb-6">❌ Unsubscribe</h2>
+                        {eventHistory.filter(ev => ev.kind === 9736).length === 0 ? (
+                            <p className="text-gray-600">Nessun unsubscribe registrato.</p>
+                        ) : (
+                            <div className="space-y-6">
+                                {eventHistory
+                                    .filter(ev => ev.kind === 9736)
+                                    .map((ev, i) => (
+                                        <div
+                                            key={i}
+                                            className="bg-white border rounded-xl shadow-lg p-6"
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-sm text-gray-500">
+                                                    {new Date(ev.time).toLocaleString()}
+                                                </p>
+                                                <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
+                                                    Unsubscribe
+                                                </span>
+                                            </div>
+
+                                            <pre className="text-xs text-gray-700 bg-gray-50 p-3 rounded shadow-inner overflow-x-auto">
+                                                {JSON.stringify(ev.event, null, 2)}
+                                            </pre>
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
+                    </section>
+                )}
+
                 {/* 🔹 ALTRI EVENTI */}
                 {filter === "other" && (
                     <section>
                         <h2 className="text-2xl font-bold text-blue-700 mb-6">🌀 Altri Eventi</h2>
-                        {eventHistory.length === 0 ? (
+                        {eventHistory.filter(ev => ev.kind !== 9736).length === 0 ? (
                             <p className="text-gray-600">Nessun evento registrato.</p>
                         ) : (
                             <div className="space-y-6">
-                                {eventHistory.map((ev, i) => (
-                                    <div
-                                        key={i}
-                                        className="bg-white border rounded-xl shadow-lg p-6"
-                                    >
-                                        <div className="flex justify-between items-center mb-2">
-                                            <p className="text-sm text-gray-500">
-                                                {new Date(ev.time).toLocaleString()}
-                                            </p>
-                                            <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                                                Kind {ev.kind}
-                                            </span>
-                                        </div>
+                                {eventHistory
+                                    .filter(ev => ev.kind !== 9736)
+                                    .map((ev, i) => (
+                                        <div
+                                            key={i}
+                                            className="bg-white border rounded-xl shadow-lg p-6"
+                                        >
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-sm text-gray-500">
+                                                    {new Date(ev.time).toLocaleString()}
+                                                </p>
+                                                <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+                                                    Kind {ev.kind}
+                                                </span>
+                                            </div>
 
-                                        <pre className="text-xs text-gray-700 bg-gray-50 p-3 rounded shadow-inner overflow-x-auto">
-                                            {JSON.stringify(ev.event, null, 2)}
-                                        </pre>
-                                    </div>
-                                ))}
+                                            <pre className="text-xs text-gray-700 bg-gray-50 p-3 rounded shadow-inner overflow-x-auto">
+                                                {JSON.stringify(ev.event, null, 2)}
+                                            </pre>
+                                        </div>
+                                    ))}
                             </div>
                         )}
                     </section>

@@ -2,6 +2,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Navbar from "../components/Navbar";
+import PageWrapper from "../components/PageWrapper"; // 👈 importa qui
 
 export const metadata: Metadata = {
     title: "ZapGate",
@@ -13,7 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <html lang="it">
         <body className="min-h-screen flex flex-col font-sans bg-white">
         <Navbar />
-        <main className="flex-1 w-full">{children}</main>
+        <main className="flex-1 w-full">
+            <PageWrapper>{children}</PageWrapper> {/* 👈 wrapper con fadeIn */}
+        </main>
         </body>
         </html>
     );

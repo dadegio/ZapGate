@@ -11,14 +11,23 @@ interface Post {
     fullContent: string
     priceSats: number
     authorNpub: string
-    relays: string[]   // 👈 array di relay invece di string
+    relays: string[]
+}
+
+interface ProfileData {
+    name?: string
+    about?: string
+    picture?: string
+    lud16?: string
 }
 
 export default function Page() {
     const [loggedUser, setLoggedUser] = useState<any>(null)
+    const [profile, setProfile] = useState<ProfileData>({})
     const [allContent, setAllContent] = useState<Post[]>([])
     const [selectedRelay, setSelectedRelay] = useState<string>('all')
 
+    // Recupera utente loggato
     useEffect(() => {
         const data = sessionStorage.getItem('loggedInUser')
         if (data) {
@@ -28,10 +37,39 @@ export default function Page() {
         }
     }, [])
 
+    // 🔹 Recupera profilo kind:0 dell’utente loggato
+    useEffect(() => {
+        if (!loggedUser?.npub) return
+        const activeSubs: Sub[] = []
+
+        RELAYS.forEach(async ({ url }) => {
+            const relay = relayInit(url)
+            await relay.connect()
+
+            const sub = relay.sub([{ kinds: [0], authors: [loggedUser.npub], limit: 1 }])
+            sub.on('event', (event) => {
+                try {
+                    const metadata = JSON.parse(event.content)
+                    setProfile({
+                        name: metadata.name,
+                        about: metadata.about,
+                        picture: metadata.picture,
+                        lud16: metadata.lud16,
+                    })
+                } catch (e) {
+                    console.warn('Errore parsing metadata kind:0', e)
+                }
+            })
+            activeSubs.push(sub)
+        })
+
+        return () => activeSubs.forEach((s) => s.unsub())
+    }, [loggedUser?.npub])
+
+    // 🔹 Carica post kind:30023
     useEffect(() => {
         if (!loggedUser) return
-
-        setAllContent([]) // reset lista ogni volta che cambi relay
+        setAllContent([])
 
         const relaysToUse =
             selectedRelay === 'all' ? RELAYS.map((r) => r.url) : [selectedRelay]
@@ -52,7 +90,7 @@ export default function Page() {
                     const existing = prev.find((p) => p.id === event.id)
 
                     if (existing) {
-                        // se già esiste, aggiungi il relay se manca
+                        // già esiste → aggiorna relay se mancante
                         if (!existing.relays.includes(url)) {
                             return prev.map((p) =>
                                 p.id === event.id ? { ...p, relays: [...p.relays, url] } : p
@@ -61,7 +99,7 @@ export default function Page() {
                         return prev
                     }
 
-                    // se nuovo, crea post
+                    // nuovo post
                     const post: Post = {
                         id: event.id,
                         title: titleTag?.[1] || 'Senza titolo',
@@ -81,24 +119,22 @@ export default function Page() {
             activeSubs.push(sub)
         })
 
-        return () => {
-            activeSubs.forEach((s) => s.unsub())
-        }
+        return () => activeSubs.forEach((s) => s.unsub())
     }, [loggedUser, selectedRelay])
 
     if (!loggedUser) return null
 
-    // ✅ filtro finale: se scelto relay singolo, mostra solo post che includono quel relay
+    // ✅ filtro finale per relay
     const filteredContent =
         selectedRelay === 'all'
             ? allContent
             : allContent.filter((item) => item.relays.includes(selectedRelay))
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+        <div className="min-h-screen bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 px-6 py-12">
             <section className="text-center py-14">
                 <h1 className="text-5xl font-extrabold text-gray-800 drop-shadow mb-3">
-                    ⚡ Benvenuto {loggedUser.node?.name || 'Utente'}!
+                    ⚡ Benvenuto {profile.name || loggedUser.npub || 'Utente'}!
                 </h1>
                 <p className="text-gray-600 text-lg">
                     Sblocca e crea contenuti esclusivi con Lightning ⚡

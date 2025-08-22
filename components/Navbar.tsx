@@ -1,5 +1,3 @@
-// components/Navbar.tsx
-
 'use client';
 
 import Link from "next/link";
@@ -37,43 +35,49 @@ export default function Navbar() {
     ];
 
     return (
-        <header className="sticky top-0 w-full z-50 bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 shadow-md backdrop-blur">
-            <div className="max-w-6xl mx-auto flex items-center justify-between p-4">
+        <header className="sticky top-0 w-full z-50 bg-white/70 backdrop-blur-md shadow-lg">
+            <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
                 {/* Logo */}
-                <Link href="/" className="flex items-center gap-2">
-                    <span className="text-2xl">⚡</span>
-                    <span className="text-xl font-extrabold text-gray-700 tracking-wide">
-                        ZapGate
-                    </span>
+                <Link href="/" className="flex items-center gap-2 group">
+                    <span className="text-2xl transition-transform group-hover:rotate-12">⚡</span>
+                    <span className="text-xl font-extrabold text-gray-800 tracking-wide">
+            ZapGate
+          </span>
                 </Link>
 
                 {/* Desktop menu */}
-                <nav className="hidden md:flex items-center gap-6">
+                <nav className="hidden md:flex items-center gap-8">
                     {navLinks.map((link) => (
                         <Link
                             key={link.href}
                             href={link.href}
-                            className={`transition ${
+                            className={`relative transition font-medium ${
                                 pathname === link.href
-                                    ? "text-purple-700 font-bold underline"
-                                    : "text-gray-700 hover:text-gray-900"
+                                    ? "text-purple-600"
+                                    : "text-gray-700 hover:text-purple-600"
                             }`}
                         >
                             {link.label}
+                            {/* underline animata */}
+                            <span
+                                className={`absolute left-0 -bottom-1 h-[2px] bg-purple-500 transition-all ${
+                                    pathname === link.href ? "w-full" : "w-0 group-hover:w-full"
+                                }`}
+                            />
                         </Link>
                     ))}
 
                     {user ? (
                         <button
                             onClick={handleLogout}
-                            className="bg-white/80 text-gray-700 px-3 py-1 rounded-lg font-semibold hover:bg-white transition shadow-sm"
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition"
                         >
                             Logout
                         </button>
                     ) : (
                         <Link
                             href="/login"
-                            className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg font-semibold shadow-sm transition"
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition"
                         >
                             Login
                         </Link>
@@ -85,23 +89,23 @@ export default function Navbar() {
                     className="md:hidden text-gray-700"
                     onClick={() => setMenuOpen(!menuOpen)}
                 >
-                    {menuOpen ? <X size={24} /> : <Menu size={24} />}
+                    {menuOpen ? <X size={26} /> : <Menu size={26} />}
                 </button>
             </div>
 
-            {/* Mobile menu */}
+            {/* Mobile menu con animazione */}
             {menuOpen && (
-                <div className="md:hidden bg-white/90 backdrop-blur shadow-md">
-                    <nav className="flex flex-col p-4 gap-3">
+                <div className="md:hidden bg-white/90 backdrop-blur-md shadow-lg animate-slideDown">
+                    <nav className="flex flex-col p-4 gap-4">
                         {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
                                 onClick={() => setMenuOpen(false)}
-                                className={`transition ${
+                                className={`transition font-medium ${
                                     pathname === link.href
-                                        ? "text-purple-700 font-bold underline"
-                                        : "text-gray-700 hover:text-gray-900"
+                                        ? "text-purple-600"
+                                        : "text-gray-700 hover:text-purple-600"
                                 }`}
                             >
                                 {link.label}
@@ -114,7 +118,7 @@ export default function Navbar() {
                                     handleLogout();
                                     setMenuOpen(false);
                                 }}
-                                className="bg-white/80 text-gray-700 px-3 py-1 rounded-lg font-semibold hover:bg-white transition shadow-sm"
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition"
                             >
                                 Logout
                             </button>
@@ -122,7 +126,7 @@ export default function Navbar() {
                             <Link
                                 href="/login"
                                 onClick={() => setMenuOpen(false)}
-                                className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg font-semibold shadow-sm transition text-center"
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:scale-105 transition text-center"
                             >
                                 Login
                             </Link>

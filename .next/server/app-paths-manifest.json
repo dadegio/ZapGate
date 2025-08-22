@@ -1,9 +1,7 @@
 {
   "/page": "app/page.js",
-  "/content/[id]/page": "app/content/[id]/page.js",
-  "/my-content/page": "app/my-content/page.js",
   "/create/page": "app/create/page.js",
-  "/login/page": "app/login/page.js",
+  "/my-content/page": "app/my-content/page.js",
   "/transactions/page": "app/transactions/page.js",
   "/profile/[npub]/page": "app/profile/[npub]/page.js"
 }

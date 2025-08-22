@@ -79,10 +79,19 @@ export default function ProfilePage() {
                 };
 
                 setAuthorPosts((prev) => {
-                    if (prev.find((p) => p.id === post.id && p.relays.includes(url)))
-                        return prev;
+                    const existing = prev.find((p) => p.id === post.id);
+                    if (existing) {
+                        // se l'evento già esiste, aggiorna solo la lista relay
+                        return prev.map((p) =>
+                            p.id === post.id
+                                ? { ...p, relays: Array.from(new Set([...p.relays, url])) }
+                                : p
+                        );
+                    }
+                    // se non esiste, lo aggiungo
                     return [post, ...prev];
                 });
+
             });
             activeSubs.push(subPosts);
         });

@@ -1,4 +1,4 @@
-import { createEvent, publishEvent, countPurchases, createZapRequest } from "./nostr";
+import { publishEvent, createZapRequest, createZapReceipt, countActivePurchases } from "./nostr";
 
 interface ZapPaymentResult {
     zapRequest: any;
@@ -45,26 +45,22 @@ export async function zapPayment(
         throw new Error("Pagamento fallito: " + (payRes.payment_error || payRes.error));
     }
 
-    // ⚡ 4. genera ZapReceipt usando createEvent (firma inclusa)
-    const zapReceipt = createEvent(
-        9735,
-        `Zap receipt of ${amount} sats`,
-        [
-            ["p", receiverNpub],
-            ["from", payerNpub],
-            ["amount", amount.toString()],
-            ["e", contentId || zapRequest.id],
-        ],
-        sk
-    );
+    // ⚡ 4. genera ZapReceipt
+    const zapReceipt = createZapReceipt({
+        receiverPubkey: receiverNpub,
+        senderPubkey: payerNpub,
+        amount,
+        zapRequestId: contentId || zapRequest.id,
+        sk,
+    });
 
     await publishEvent(zapReceipt);
 
-    // 🔢 aggiorna subito il counter
+    // 🔢 aggiorna subito il counter (acquisti attivi, non totali)
     let purchases = 0;
     if (contentId) {
-        purchases = await countPurchases(contentId);
-        console.log(`🔢 Acquisti totali aggiornati per ${contentId}:`, purchases);
+        purchases = await countActivePurchases(contentId, []); // 👈 usa attivi
+        console.log(`🔢 Acquisti attivi aggiornati per ${contentId}:`, purchases);
     }
 
     // 📝 5. salva in localStorage
