@@ -1,10 +1,8 @@
-// profile/[npub]/paget.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";   // 👈 IMPORTANTE
+import Link from "next/link"; // 👈 IMPORTANTE
 import { relayInit } from "nostr-tools";
 import { RELAYS } from "../../../lib/config";
 import EditProfile from "../../../components/EditProfile";
@@ -21,7 +19,7 @@ interface Post {
     title: string;
     preview: string;
     priceSats: number;
-    relays: string[];  // 👈 corretto
+    relays: string[]; // 👈 corretto
 }
 
 export default function ProfilePage() {
@@ -72,7 +70,6 @@ export default function ProfilePage() {
                 const titleTag = event.tags.find((t) => t[0] === "title");
                 const priceTag = event.tags.find((t) => t[0] === "price_sats");
 
-                // dentro subPosts.on("event")
                 const post: Post = {
                     id: event.id,
                     title: titleTag?.[1] || "Senza titolo",
@@ -81,9 +78,9 @@ export default function ProfilePage() {
                     relays: [url], // 🟢 aggiunto array
                 };
 
-
                 setAuthorPosts((prev) => {
-                    if (prev.find((p) => p.id === post.id && p.relays.includes(url))) return prev;
+                    if (prev.find((p) => p.id === post.id && p.relays.includes(url)))
+                        return prev;
                     return [post, ...prev];
                 });
             });
@@ -155,19 +152,27 @@ export default function ProfilePage() {
                 {/* Colonna post */}
                 <div className="bg-white rounded-xl shadow-lg p-6">
                     <h3 className="text-xl font-semibold mb-4">Post creati</h3>
+
                     {authorPosts.length === 0 ? (
                         <p className="text-gray-500">Nessun contenuto trovato.</p>
                     ) : (
                         <div className="grid gap-6">
                             {authorPosts.map((item) => (
-                                <Link key={item.id + item.relays} href={`/content/${item.id}`}>
+                                <Link
+                                    key={item.id + item.relays}
+                                    href={`/content/${item.id}`}
+                                >
                                     <div className="cursor-pointer border bg-gray-50 rounded-lg shadow p-4 text-left hover:bg-gray-100 transition">
-                                        <h2 className="text-lg font-bold mb-1">{item.title}</h2>
+                                        <h2 className="text-lg font-bold mb-1">
+                                            {item.title}
+                                        </h2>
                                         <p className="text-gray-600 text-sm">{item.preview}</p>
                                         <p className="mt-2 text-sm text-gray-500">
                                             Prezzo: {item.priceSats} sats
                                         </p>
-                                        <p className="mt-1 text-xs text-gray-400">Relay: {item.relays}</p>
+                                        <p className="mt-1 text-xs text-gray-400">
+                                            Relay: {item.relays}
+                                        </p>
                                     </div>
                                 </Link>
                             ))}

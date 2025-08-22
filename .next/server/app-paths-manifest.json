@@ -1,7 +1,9 @@
 {
-  "/not-found": "app/not-found.js",
-  "/content/[id]/page": "app/content/[id]/page.js",
-  "/profile/[npub]/page": "app/profile/[npub]/page.js",
   "/page": "app/page.js",
-  "/my-content/page": "app/my-content/page.js"
+  "/content/[id]/page": "app/content/[id]/page.js",
+  "/my-content/page": "app/my-content/page.js",
+  "/create/page": "app/create/page.js",
+  "/login/page": "app/login/page.js",
+  "/transactions/page": "app/transactions/page.js",
+  "/profile/[npub]/page": "app/profile/[npub]/page.js"
 }

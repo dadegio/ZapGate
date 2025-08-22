@@ -1,4 +1,3 @@
-// lib/nostr.ts
 import {
     SimplePool,
     getPublicKey,
@@ -106,79 +105,74 @@ export function createZapReceipt({
     sk?: Uint8Array
 }): NostrEvent {
     const tags: string[][] = [
-        ['p', receiverPubkey],
-        ['amount', String(amount)],
-        ['e', zapRequestId],
-        ['from', senderPubkey],
-    ]
+        ["p", receiverPubkey],
+        ["payer", senderPubkey], // 👈 non più "from"
+        ["amount", String(amount)],
+        ["e", zapRequestId],
+    ];
 
     return createEvent(9735, `Zap receipt of ${amount} sats`, tags, sk)
 }
 
+
 /**
  * Pubblica un evento su tutti i relay
  */
-export async function publishEvent(ev: NostrEvent): Promise<void> {
-    let signed = ev
+export async function publishEvent(ev: NostrEvent, skHex?: string): Promise<void> {
+    let signed = ev;
 
-    // se ho NIP-07 uso quello
-    if ((window as any).nostr) {
-        signed = await (window as any).nostr.signEvent(ev)
+    if (skHex) {
+        // ✅ Firma manuale, così non perdiamo i tag
+        signed.sig = signEvent(ev, skHex);
+    } else if ((window as any).nostr) {
+        // fallback: se non hai la tua privkey, chiedi al provider
+        signed = await (window as any).nostr.signEvent(ev);
     } else {
-        console.warn("⚠ Nessun provider nostr (NIP-07), uso sk random")
-        // fallback: firma locale (⚠ se vuoi usa la tua sk qui)
-        signed.sig = signEvent(ev, "")
+        console.warn("⚠ Nessun provider nostr (NIP-07), uso sk random");
+        signed.sig = signEvent(ev, "");
     }
 
-    // ✅ ora passo solo string[]
-    const pubs = pool.publish(relayUrls, signed)
-    await Promise.all(pubs)
+    console.log("📤 Pubblico evento firmato:", JSON.stringify(signed, null, 2));
+
+    const pubs = pool.publish(relayUrls, signed);
+    await Promise.all(pubs);
 }
 
-// 🔢 Conta il numero di zapReceipt (9735) legati a un contenuto
-export async function countPurchases(itemId: string, relays: string[] = RELAYS.map(r => r.url)): Promise<number> {
+export async function countActivePurchases(
+    postId: string,
+    relays: string[]
+): Promise<number> {
     return new Promise((resolve) => {
-        let count = 0;
-        const sub = pool.sub(relays, [{ kinds: [9735], "#e": [itemId] }]);
+        const lastEvent: Record<string, NostrEvent> = {}
 
-        sub.on("event", (event) => {
-            console.log("📩 Zap trovato:", event);
-            count++;
-        });
+        const sub = pool.sub(relays, [{ kinds: [9735, 9736], "#e": [postId] }])
 
-        sub.on("eose", () => {
-            sub.unsub();
-            resolve(count);
-        });
-    });
-}
+        sub.on("event", (event: NostrEvent) => {
+            console.log("👀 Evento visto da countActivePurchases:", event)
 
-export async function countActivePurchases(postId: string, relays: string[]): Promise<number> {
-    return new Promise((resolve) => {
-        const lastEvent: Record<string, NostrEvent> = {};
-
-        const sub = pool.sub(relays, [
-            { kinds: [9735, 9736], "#e": [postId] }
-        ]);
-
-        (sub as any).on("event", (event: NostrEvent) => {
-            const payer = event.tags.find((t) => t[0] === "payer")?.[1];
-            if (!payer) return;
-
-            const prev = lastEvent[payer];
-            // salva sempre quello più recente
-            if (!prev || event.created_at > prev.created_at) {
-                lastEvent[payer] = event;
+            const payer = event.tags.find((t) => t[0] === "payer")?.[1]
+            if (!payer) {
+                console.log("⚠ Nessun payer in questo evento:", event)
+                return
             }
-        });
+
+            const prev = lastEvent[payer]
+            if (!prev || event.created_at > prev.created_at) {
+                console.log(`✅ Aggiorno ultimo evento per ${payer} → kind ${event.kind}`)
+                lastEvent[payer] = event
+            }
+        })
 
         sub.on("eose", () => {
-            // conta solo quelli il cui ultimo evento è un acquisto (9735)
-            const stillActive = Object.values(lastEvent).filter((ev) => ev.kind === 9735);
-            resolve(stillActive.length);
-            sub.unsub();
-        });
-    });
+            console.log("🔚 EOSE raggiunto, lastEvent:", lastEvent)
+            const stillActive = Object.values(lastEvent).filter(
+                (ev) => ev.kind === 9735
+            )
+            console.log("📊 Active purchases conteggiati:", stillActive.length)
+            resolve(stillActive.length)
+            sub.unsub()
+        })
+    })
 }
 
 
@@ -207,9 +201,8 @@ export function createUnsubscribeEvent(
         `Unsubscribe from post ${postId}`,
         [
             ["e", postId],
-            ["p", userPubkey]
+            ["payer", userPubkey]   // 👈 coerente col 9735
         ],
         sk
     );
 }
-

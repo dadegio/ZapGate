@@ -15,7 +15,7 @@ interface Post {
     priceSats: number;
     authorNpub: string;
     preview?: string;
-    relay: string[];
+    relays: string[];
 }
 
 export default function ContentPage() {
@@ -47,8 +47,8 @@ export default function ContentPage() {
             [{ ids: [params.id as string] }]
         );
 
-        (sub as any).on("event", (event: any, relayUrl: string) => {
-            console.log("Evento da", relayUrl, event);
+        (sub as any).on("event", (event: any) => {
+            console.log("Evento ricevuto:", event);
 
             setItem({
                 id: event.id,
@@ -59,13 +59,12 @@ export default function ContentPage() {
                     10
                 ),
                 authorNpub: event.pubkey,
-                relay: [relayUrl],
+                // usa sempre la lista completa dei relay noti
+                relays: RELAYS.map(r => r.url),
             });
 
             (sub as any).unsub();
         });
-
-
 
         sub.on('eose', () => {
             console.log('🚫 Nessun evento trovato per questo ID');

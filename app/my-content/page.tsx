@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createEvent } from "../../lib/nostr";
+import {createEvent, createUnsubscribeEvent, publishEvent} from "../../lib/nostr";
 import { RELAYS } from "../../lib/config";
 import { relayInit } from "nostr-tools";
 
@@ -46,32 +46,25 @@ export default function MyContentPage() {
         try {
             if (!loggedUser) return;
 
-            // 🔥 Pubblica evento kind 9736 (unsubscribe)
-            const ev = createEvent(
-                9736,
-                "unsubscribe",
-                [["e", id], ["payer", loggedUser.npub]],
-                loggedUser.privkey
-            );
+            // ✅ Usa utility da lib/nostr
+            const ev = createUnsubscribeEvent(id, loggedUser.npub);
+            await publishEvent(ev);
 
-            for (const r of RELAYS) {
-                const relay = relayInit(r.url);
-                await relay.connect();
-                relay.publish(ev);
-            }
-
-            console.log("📤 Evento 9736 pubblicato per post", id);
+            console.log("📤 Evento 9736 (unsubscribe) pubblicato per post", id);
         } catch (err) {
             console.error("Errore pubblicazione 9736:", err);
         }
     };
 
+
     useEffect(() => {
         loadUnlockedPosts();
         const onStorageChange = () => loadUnlockedPosts();
         window.addEventListener("storage", onStorageChange);
+
         const data = sessionStorage.getItem("loggedInUser");
         if (data) setLoggedUser(JSON.parse(data));
+
         return () => {
             window.removeEventListener("storage", onStorageChange);
         };

@@ -1,15 +1,12 @@
-// components/ContentCard.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { zapPayment } from '../lib/zaps';
-import { countPurchases, publishEvent, createDeleteEvent } from '../lib/nostr';
-import { countActivePurchases } from "../lib/nostr";
-import {relayInit} from "nostr-tools";
+import { countActivePurchases, createDeleteEvent, publishEvent } from '../lib/nostr';
 
 interface ContentCardProps {
-    item: any;
+    item: Post;
     loggedUser: any;
-    isAuthor: boolean;
+    isAuthor?: boolean;
 }
 
 interface Post {
@@ -19,22 +16,16 @@ interface Post {
     priceSats: number;
     authorNpub: string;
     preview?: string;
-    relays: string[];   // 👈 assicuriamoci sia array
+    relays: string[];
 }
 
-export default function ContentCard({
-                                        item,
-                                        loggedUser,
-                                        isAuthor,
-                                    }: {
-    item: Post;
-    loggedUser: any;
-    isAuthor?: boolean;
-}) {
+export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardProps) {
     const [unlocked, setUnlocked] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purchaseCount, setPurchaseCount] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
+    // 🔍 inizializza stato sbloccato e conta acquisti attivi
     useEffect(() => {
         const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
         if (unlockedContent.includes(item.id) || isAuthor) {
@@ -42,7 +33,7 @@ export default function ContentCard({
         }
 
         if (isAuthor) {
-            countPurchases(item.id, item.relays).then(setPurchaseCount);
+            countActivePurchases(item.id, item.relays).then(setPurchaseCount);
         }
     }, [item.id, isAuthor, item.relays]);
 
@@ -58,12 +49,13 @@ export default function ContentCard({
                 item.authorNpub,
                 item.priceSats,
                 `Zap per ${item.title}`,
-                item.id  // 👈 passa contentId
+                item.id
             );
 
             console.log("✅ ZapRequest:", zapRequest);
             console.log("✅ ZapReceipt:", zapReceipt);
 
+            // salva localmente
             const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
             if (!unlockedContent.includes(item.id)) {
                 unlockedContent.push(item.id);
@@ -78,11 +70,12 @@ export default function ContentCard({
 
             setUnlocked(true);
 
-            // 🔢 aggiorna counter subito
+            // aggiorna conteggio attivo
             if (isAuthor) {
-                const newCount = await countPurchases(item.id, item.relays);
+                const newCount = await countActivePurchases(item.id, item.relays);
                 setPurchaseCount(newCount);
             }
+
         } catch (err) {
             console.error("❌ Errore pagamento:", err);
             alert("Errore pagamento: " + (err as Error).message);
@@ -90,8 +83,6 @@ export default function ContentCard({
             setLoading(false);
         }
     };
-
-    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDeleteCheck = async () => {
         if (!window.nostr) {
@@ -103,35 +94,21 @@ export default function ContentCard({
         setIsDeleting(true);
 
         try {
+            // controlla prima se ci sono ancora acquirenti
             const activeCount = await countActivePurchases(item.id, item.relays);
-            console.log("🔍 Compratori attivi:", activeCount);
-
             if (activeCount > 0) {
                 alert("❌ Impossibile eliminare: ci sono ancora utenti che hanno acquistato.");
-                setIsDeleting(false);
                 return;
             }
 
-            for (const url of item.relays) {
-                const ev = {
-                    kind: 5,
-                    pubkey: loggedUser.npub,
-                    created_at: Math.floor(Date.now() / 1000),
-                    tags: [["e", item.id]],
-                    content: "delete",
-                };
-
-                const signed = await window.nostr.signEvent(ev);
-
-                const relay = relayInit(url); // ⬅ usa import, non window
-                await relay.connect();
-                relay.publish(signed);
-            }
+            // pubblica evento delete
+            const ev = createDeleteEvent(item.id, "delete");
+            await publishEvent(ev);
 
             alert("✅ Post eliminato!");
         } catch (err: any) {
             console.error("Errore eliminazione:", err);
-            alert("Errore eliminazione: " + err.message);
+            alert("Errore eliminazione: " + (err.message || JSON.stringify(err)));
         } finally {
             setIsDeleting(false);
         }
@@ -155,28 +132,17 @@ export default function ContentCard({
             {isAuthor && (
                 <div className="mt-2">
                     {purchaseCount !== null && (
-                        <p className="text-sm text-gray-500">
-                            🔢 Acquisti: {purchaseCount}
-                        </p>
+                        <p className="text-sm text-gray-500">🔢 Acquisti attivi: {purchaseCount}</p>
                     )}
                     <button
                         onClick={handleDeleteCheck}
-                        disabled={purchaseCount !== 0}
-                        className={`px-4 py-2 rounded mt-2 ${
-                            purchaseCount === 0
-                                ? "bg-red-500 text-white hover:bg-red-600"
-                                : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                        }`}
+                        disabled={isDeleting}
+                        className="px-4 py-2 rounded mt-2 bg-red-500 text-white hover:bg-red-600"
                     >
-                        🗑 Elimina
+                        {isDeleting ? "Eliminazione..." : "🗑 Elimina"}
                     </button>
                 </div>
             )}
         </div>
     );
 }
-/**
- * @TODO
- * migliora elimina
- * migliora profilo
- * migliora transactions*/
