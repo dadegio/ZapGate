@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {createEvent, createUnsubscribeEvent, publishEvent} from "../../lib/nostr";
-import { RELAYS } from "../../lib/config";
-import { relayInit } from "nostr-tools";
+import { createUnsubscribeEvent, publishEvent } from "../../lib/nostr";
 
 interface Post {
     id: string;
@@ -11,6 +9,59 @@ interface Post {
     fullContent: string;
     priceSats: number;
     authorNpub: string;
+}
+
+// 🔹 Funzione che trasforma il contenuto in media embeddati
+function renderContent(content: string) {
+    return content.split(/\s+/).map((word, i) => {
+        // Immagini
+        if (word.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
+            return (
+                <img
+                    key={i}
+                    src={word}
+                    alt="media"
+                    className="my-3 mx-auto rounded-lg shadow max-w-md w-full h-auto"
+                />
+            );
+        }
+
+        // Video
+        if (word.match(/\.(mp4|webm)$/i)) {
+            return (
+                <video
+                    key={i}
+                    src={word}
+                    controls
+                    className="my-3 mx-auto rounded-lg shadow max-w-2xl w-full h-auto"
+                />
+            );
+        }
+
+        // YouTube
+        if (word.includes("youtube.com") || word.includes("youtu.be")) {
+            const embedUrl = word.includes("watch?v=")
+                ? word.replace("watch?v=", "embed/")
+                : word.replace("youtu.be/", "youtube.com/embed/");
+            return (
+                <div
+                    key={i}
+                    className="relative my-3 w-full max-w-2xl mx-auto"
+                    style={{ paddingTop: "56.25%" }}
+                >
+                    <iframe
+                        src={embedUrl}
+                        className="absolute top-0 left-0 w-full h-full rounded-lg shadow"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    />
+                </div>
+            );
+        }
+
+        // Testo normale
+        return word + " ";
+    });
 }
 
 export default function MyContentPage() {
@@ -46,7 +97,7 @@ export default function MyContentPage() {
         try {
             if (!loggedUser) return;
 
-            // ✅ Usa utility da lib/nostr
+            // ✅ Pubblica evento unsubscribe (kind 9736)
             const ev = createUnsubscribeEvent(id, loggedUser.npub);
             await publishEvent(ev);
 
@@ -55,7 +106,6 @@ export default function MyContentPage() {
             console.error("Errore pubblicazione 9736:", err);
         }
     };
-
 
     useEffect(() => {
         loadUnlockedPosts();
@@ -86,7 +136,11 @@ export default function MyContentPage() {
                             className="border bg-white rounded-lg shadow p-6 text-left"
                         >
                             <h2 className="text-xl font-bold mb-2">{item.title}</h2>
-                            <p className="text-gray-700 mb-2">{item.fullContent}</p>
+
+                            <div className="text-gray-700 mb-2 whitespace-pre-wrap break-words">
+                                {renderContent(item.fullContent)}
+                            </div>
+
                             <p className="mt-2 text-sm text-gray-500">
                                 Autore: {item.authorNpub?.slice(0, 12) || "sconosciuto"}…
                             </p>

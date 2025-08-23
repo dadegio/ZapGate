@@ -13,6 +13,7 @@ export default function CreatePage() {
     const [loggedUser, setLoggedUser] = useState<any>(null)
     const [selectedRelays, setSelectedRelays] = useState<string[]>([])
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+    const [fadeOut, setFadeOut] = useState(false)
 
     useEffect(() => {
         const stored = sessionStorage.getItem('loggedInUser')
@@ -31,7 +32,10 @@ export default function CreatePage() {
 
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type })
-        setTimeout(() => setToast(null), 3000) // chiude dopo 3s
+        setFadeOut(false)
+
+        setTimeout(() => setFadeOut(true), 2200) // inizia a dissolvere
+        setTimeout(() => setToast(null), 3000)   // rimuovi dopo 3s
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -67,7 +71,7 @@ export default function CreatePage() {
             }
 
             showToast('✅ Post pubblicato su Nostr!', 'success')
-            setTimeout(() => router.push('/'), 1500) // vai in home dopo 1.5s
+            setTimeout(() => router.push('/'), 1500)
         } catch (err) {
             console.error('❌ Errore pubblicazione:', err)
             showToast('Errore pubblicazione: ' + (err as any).message, 'error')
@@ -143,13 +147,16 @@ export default function CreatePage() {
                 </form>
             </div>
 
-            {/* ✅ Toast notifiche */}
+            {/* ✅ Toast centrato e con fadeOut */}
             {toast && (
-                <div
-                    className={`fixed top-5 right-5 px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition transform animate-fadeIn
-                        ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
-                >
-                    {toast.message}
+                <div className="fixed inset-0 flex items-center justify-center z-[9999]">
+                    <div
+                        className={`px-6 py-4 rounded-xl shadow-2xl text-white font-semibold
+              ${fadeOut ? 'animate-fadeOut' : 'animate-fadeIn'}
+              ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
+                    >
+                        {toast.message}
+                    </div>
                 </div>
             )}
         </div>

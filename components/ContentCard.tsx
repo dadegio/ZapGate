@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';  // ✅ hook corretto
+import { useRouter } from 'next/navigation';
 import { zapPayment } from '../lib/zaps';
 import { countActivePurchases, createDeleteEvent, publishEvent } from '../lib/nostr';
 
@@ -21,8 +21,53 @@ interface Post {
     relays: string[];
 }
 
+function renderContent(content: string) {
+    return content.split(/\s+/).map((word, i) => {
+        // immagini
+        if (word.match(/\.(jpeg|jpg|png|gif)$/i)) {
+            return (
+                <img
+                    key={i}
+                    src={word}
+                    alt="media"
+                    className="my-4 mx-auto rounded-xl shadow max-w-md w-full h-auto"
+                />
+            );
+        }
+        // video
+        if (word.match(/\.(mp4|webm)$/i)) {
+            return (
+                <video
+                    key={i}
+                    src={word}
+                    controls
+                    className="my-4 mx-auto rounded-xl shadow max-w-2xl w-full h-auto"
+                />
+            );
+        }
+        // YouTube (responsive 16:9)
+        if (word.includes("youtube.com") || word.includes("youtu.be")) {
+            const embedUrl = word.includes("watch?v=")
+                ? word.replace("watch?v=", "embed/")
+                : word.replace("youtu.be/", "youtube.com/embed/");
+            return (
+                <div key={i} className="relative my-4 w-full max-w-2xl mx-auto" style={{ paddingTop: "42.857%" }}>
+                    <iframe
+                        src={embedUrl}
+                        className="absolute top-0 left-0 w-full h-full rounded-xl shadow"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    ></iframe>
+                </div>
+            );
+        }
+        // altrimenti testo normale
+        return word + " ";
+    });
+}
+
 export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardProps) {
-    const router = useRouter(); // ✅ ora funziona
+    const router = useRouter();
     const [unlocked, setUnlocked] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purchaseCount, setPurchaseCount] = useState<number | null>(null);
@@ -30,13 +75,11 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // ✅ funzione per mostrare toast
     const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         setToast({ message, type });
-        setTimeout(() => setToast(null), 3000);
+        setTimeout(() => setToast(null), 2500);
     };
 
-    // 🔍 inizializza stato sbloccato e conteggio acquisti
     useEffect(() => {
         const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
         if (unlockedContent.includes(item.id) || isAuthor) {
@@ -65,7 +108,6 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
             console.log("✅ ZapRequest:", zapRequest);
             console.log("✅ ZapReceipt:", zapReceipt);
 
-            // salva localmente
             const unlockedContent = JSON.parse(localStorage.getItem("unlockedContent") || "[]");
             if (!unlockedContent.includes(item.id)) {
                 unlockedContent.push(item.id);
@@ -112,11 +154,9 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
             await publishEvent(ev);
 
             showToast("✅ Post eliminato!");
-
-            // 👇 redirect in home dopo 1.5s
             setTimeout(() => {
                 router.push("/");
-            }, 500);
+            }, 1500);
         } catch (err: any) {
             console.error("Errore eliminazione:", err);
             showToast("Errore eliminazione: " + (err.message || JSON.stringify(err)), "error");
@@ -129,7 +169,11 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
     return (
         <div className="border p-4 rounded bg-white shadow mb-4 relative">
             <h2 className="text-lg font-bold">{item.title}</h2>
-            <p>{unlocked ? item.fullContent : item.preview || "🔒 Contenuto bloccato"}</p>
+
+            {/* 👇 Usa il parser solo se sbloccato */}
+            <div className="prose max-w-none">
+                {unlocked ? renderContent(item.fullContent) : item.preview || "🔒 Contenuto bloccato"}
+            </div>
 
             {!unlocked && !isAuthor && (
                 <button
@@ -174,13 +218,14 @@ export default function ContentCard({ item, loggedUser, isAuthor }: ContentCardP
                 </div>
             )}
 
-            {/* ✅ Toast */}
             {toast && (
-                <div
-                    className={`fixed top-5 right-5 px-6 py-3 rounded-xl shadow-lg text-white font-semibold transition transform animate-fadeIn
-                        ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
-                >
-                    {toast.message}
+                <div className="fixed inset-0 flex items-center justify-center z-[9999]">
+                    <div
+                        className={`px-6 py-4 rounded-xl shadow-2xl text-white font-semibold animate-fadeIn
+                            ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}
+                    >
+                        {toast.message}
+                    </div>
                 </div>
             )}
         </div>

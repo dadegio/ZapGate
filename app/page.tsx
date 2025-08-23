@@ -26,6 +26,7 @@ export default function Page() {
     const [profile, setProfile] = useState<ProfileData>({})
     const [allContent, setAllContent] = useState<Post[]>([])
     const [selectedRelay, setSelectedRelay] = useState<string>('all')
+    const [unlockedIds, setUnlockedIds] = useState<string[]>([])
 
     // Recupera utente loggato
     useEffect(() => {
@@ -35,6 +36,12 @@ export default function Page() {
         } else {
             window.location.href = '/login'
         }
+    }, [])
+
+    // Carica contenuti sbloccati da localStorage
+    useEffect(() => {
+        const unlocked = JSON.parse(localStorage.getItem('unlockedContent') || '[]')
+        setUnlockedIds(unlocked)
     }, [])
 
     // 🔹 Recupera profilo kind:0 dell’utente loggato
@@ -101,21 +108,20 @@ export default function Page() {
 
                     // nuovo post
                     const previewText = event.content
-                        .split(" ")
-                        .slice(0, 20) // ✅ prendi solo le prime 20 parole
-                        .join(" ")
-                        .concat("...")
+                        .split(' ')
+                        .slice(0, 20)
+                        .join(' ')
+                        .concat('...')
 
                     const post: Post = {
                         id: event.id,
                         title: titleTag?.[1] || 'Senza titolo',
-                        preview: previewText, // ✅ preview dinamica
+                        preview: previewText,
                         fullContent: event.content,
                         priceSats: priceTag ? parseInt(priceTag[1]) : 0,
                         authorNpub: event.pubkey,
                         relays: [url],
                     }
-
 
                     return [post, ...prev]
                 })
@@ -131,17 +137,21 @@ export default function Page() {
 
     if (!loggedUser) return null
 
-    // ✅ filtro finale per relay
+    // ✅ filtro finale: escludi i post creati dall'utente stesso
     const filteredContent =
         selectedRelay === 'all'
             ? allContent
             : allContent.filter((item) => item.relays.includes(selectedRelay))
 
+    const visibleContent = filteredContent.filter(
+        (item) => item.authorNpub !== loggedUser.npub
+    )
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 px-6 py-12">
             <section className="text-center py-14">
                 <h1 className="text-5xl font-extrabold text-gray-800 drop-shadow mb-3">
-                    ⚡ Benvenuto {profile.name || loggedUser.npub || 'Utente'}!
+                    ⚡ Benvenuto {profile.name || loggedUser.name || 'Utente'}!
                 </h1>
                 <p className="text-gray-600 text-lg">
                     Sblocca e crea contenuti esclusivi con Lightning ⚡
@@ -166,30 +176,34 @@ export default function Page() {
                     </select>
                 </div>
 
-                {filteredContent.length === 0 ? (
+                {visibleContent.length === 0 ? (
                     <p className="text-center text-gray-600">Nessun contenuto disponibile.</p>
                 ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredContent.map((item) => (
-                            <Link key={item.id} href={`/content/${item.id}`}>
-                                <div className="bg-white/90 rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] transition transform p-6 cursor-pointer relative overflow-hidden backdrop-blur-sm">
-                                    <div className="absolute right-4 top-4 text-purple-200 text-5xl opacity-30">
-                                        ⚡
+                        {visibleContent.map((item) => {
+                            const isUnlocked = unlockedIds.includes(item.id)
+
+                            return (
+                                <Link key={item.id} href={`/content/${item.id}`}>
+                                    <div className="bg-white/90 rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] transition transform p-6 cursor-pointer relative overflow-hidden backdrop-blur-sm">
+                                        <div className="absolute right-4 top-4 text-purple-200 text-5xl opacity-30">
+                                            ⚡
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                                            {item.title}
+                                        </h2>
+                                        <p className="text-gray-600 line-clamp-2">{item.preview}</p>
+                                        <span className="inline-block mt-4 bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-semibold px-4 py-1 rounded-full shadow">
+                      {isUnlocked ? '✅ Sbloccato' : `🔒 ${item.priceSats} sats`}
+                    </span>
+                                        {/* mostra la lista relay */}
+                                        <div className="text-xs text-gray-500 mt-2">
+                                            {item.relays.join(', ')}
+                                        </div>
                                     </div>
-                                    <h2 className="text-2xl font-bold text-gray-800 mb-3">
-                                        {item.title}
-                                    </h2>
-                                    <p className="text-gray-600 line-clamp-2">{item.preview}</p>
-                                    <span className="inline-block mt-4 bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-semibold px-4 py-1 rounded-full shadow">
-                    🔒 {item.priceSats} sats
-                  </span>
-                                    {/* mostra la lista relay */}
-                                    <div className="text-xs text-gray-500 mt-2">
-                                        {item.relays.join(', ')}
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                                </Link>
+                            )
+                        })}
                     </div>
                 )}
             </main>

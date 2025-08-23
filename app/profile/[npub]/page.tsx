@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link"; // 👈 IMPORTANTE
+import Link from "next/link";
 import { relayInit } from "nostr-tools";
 import { RELAYS } from "../../../lib/config";
 import EditProfile from "../../../components/EditProfile";
@@ -19,7 +19,64 @@ interface Post {
     title: string;
     preview: string;
     priceSats: number;
-    relays: string[]; // 👈 corretto
+    relays: string[];
+}
+
+// 🔹 Renderer per testo / immagini / video
+function renderPreview(content: string) {
+    return content.split(/\s+/).map((word, i) => {
+        // Immagini
+        if (word.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
+            return (
+                <img
+                    key={i}
+                    src={word}
+                    alt="preview"
+                    className="my-2 max-h-40 rounded-lg mx-auto object-contain shadow"
+                />
+            );
+        }
+
+        // Video
+        if (word.match(/\.(mp4|webm)$/i)) {
+            return (
+                <video
+                    key={i}
+                    src={word}
+                    controls
+                    className="my-2 max-h-48 w-full rounded-lg shadow"
+                />
+            );
+        }
+
+        // YouTube
+        if (word.includes("youtube.com") || word.includes("youtu.be")) {
+            const embedUrl = word.includes("watch?v=")
+                ? word.replace("watch?v=", "embed/")
+                : word.replace("youtu.be/", "youtube.com/embed/");
+            return (
+                <div
+                    key={i}
+                    className="relative my-2 w-full"
+                    style={{ paddingTop: "56.25%" }}
+                >
+                    <iframe
+                        src={embedUrl}
+                        className="absolute top-0 left-0 w-full h-full rounded-lg shadow"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                    />
+                </div>
+            );
+        }
+
+        // Testo normale (con break-words)
+        return (
+            <span key={i} className="break-words">
+        {word + " "}
+      </span>
+        );
+    });
 }
 
 export default function ProfilePage() {
@@ -73,25 +130,22 @@ export default function ProfilePage() {
                 const post: Post = {
                     id: event.id,
                     title: titleTag?.[1] || "Senza titolo",
-                    preview: event.content.slice(0, 100) + "...",
+                    preview: event.content, // 👉 usiamo tutto il contenuto, lo renderizziamo
                     priceSats: priceTag ? parseInt(priceTag[1]) : 0,
-                    relays: [url], // 🟢 aggiunto array
+                    relays: [url],
                 };
 
                 setAuthorPosts((prev) => {
                     const existing = prev.find((p) => p.id === post.id);
                     if (existing) {
-                        // se l'evento già esiste, aggiorna solo la lista relay
                         return prev.map((p) =>
                             p.id === post.id
                                 ? { ...p, relays: Array.from(new Set([...p.relays, url])) }
                                 : p
                         );
                     }
-                    // se non esiste, lo aggiungo
                     return [post, ...prev];
                 });
-
             });
             activeSubs.push(subPosts);
         });
@@ -167,20 +221,17 @@ export default function ProfilePage() {
                     ) : (
                         <div className="grid gap-6">
                             {authorPosts.map((item) => (
-                                <Link
-                                    key={item.id + item.relays}
-                                    href={`/content/${item.id}`}
-                                >
+                                <Link key={item.id} href={`/content/${item.id}`}>
                                     <div className="cursor-pointer border bg-gray-50 rounded-lg shadow p-4 text-left hover:bg-gray-100 transition">
-                                        <h2 className="text-lg font-bold mb-1">
-                                            {item.title}
-                                        </h2>
-                                        <p className="text-gray-600 text-sm">{item.preview}</p>
+                                        <h2 className="text-lg font-bold mb-1">{item.title}</h2>
+                                        <div className="text-gray-600 text-sm line-clamp-3 break-words">
+                                            {renderPreview(item.preview)}
+                                        </div>
                                         <p className="mt-2 text-sm text-gray-500">
                                             Prezzo: {item.priceSats} sats
                                         </p>
-                                        <p className="mt-1 text-xs text-gray-400">
-                                            Relay: {item.relays}
+                                        <p className="mt-1 text-xs text-gray-400 break-all">
+                                            Relay: {item.relays.join(", ")}
                                         </p>
                                     </div>
                                 </Link>
