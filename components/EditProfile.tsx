@@ -13,24 +13,32 @@ interface ProfileForm {
     lud16: string;
 }
 
-export default function EditProfile({ initial }: { initial: ProfileForm }) {
+export default function EditProfile({
+                                        initial,
+                                        onSaved,
+                                    }: {
+    initial: ProfileForm;
+    onSaved?: (form: ProfileForm) => void; // ✅ callback
+}) {
     const [form, setForm] = useState<ProfileForm>(initial);
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
         setForm({ ...form, [e.target.name]: e.target.value });
     };
 
     const handleSave = async () => {
         try {
             if (!window.nostr) {
-                alert("❌ Estensione Nostr non trovata (Alby, Nos2x, ecc.)");
+                console.error('❌ Estensione Nostr non trovata (Alby, Nos2x, ecc.)');
                 return;
             }
 
             setLoading(true);
 
-            // ✍️ Crea evento kind:0
+            // ✍️ Evento kind:0
             const event = {
                 kind: 0,
                 created_at: Math.floor(Date.now() / 1000),
@@ -53,19 +61,19 @@ export default function EditProfile({ initial }: { initial: ProfileForm }) {
                 }
             }
 
-            // 📦 Salva anche in eventHistory (localStorage)
-            const current = JSON.parse(localStorage.getItem("eventHistory") || "[]");
+            // 📦 Salva in eventHistory
+            const current = JSON.parse(localStorage.getItem('eventHistory') || '[]');
             current.push({
                 time: Date.now(),
                 kind: signedEvent.kind,
                 event: signedEvent,
             });
-            localStorage.setItem("eventHistory", JSON.stringify(current));
+            localStorage.setItem('eventHistory', JSON.stringify(current));
 
-            alert('✅ Profilo aggiornato su Nostr!');
+            // ✅ chiama callback per chiudere il form
+            if (onSaved) onSaved(form);
         } catch (e) {
-            console.error("❌ Errore salvataggio profilo:", e);
-            alert('❌ Errore salvataggio profilo');
+            console.error('❌ Errore salvataggio profilo:', e);
         } finally {
             setLoading(false);
         }

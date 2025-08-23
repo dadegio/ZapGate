@@ -25,7 +25,6 @@ interface Post {
 // 🔹 Renderer per testo / immagini / video
 function renderPreview(content: string) {
     return content.split(/\s+/).map((word, i) => {
-        // Immagini
         if (word.match(/\.(jpeg|jpg|png|gif|webp)$/i)) {
             return (
                 <img
@@ -37,7 +36,6 @@ function renderPreview(content: string) {
             );
         }
 
-        // Video
         if (word.match(/\.(mp4|webm)$/i)) {
             return (
                 <video
@@ -49,7 +47,6 @@ function renderPreview(content: string) {
             );
         }
 
-        // YouTube
         if (word.includes("youtube.com") || word.includes("youtu.be")) {
             const embedUrl = word.includes("watch?v=")
                 ? word.replace("watch?v=", "embed/")
@@ -58,7 +55,7 @@ function renderPreview(content: string) {
                 <div
                     key={i}
                     className="relative my-2 w-full"
-                    style={{ paddingTop: "56.25%" }}
+                    style={{ paddingTop: "42.85%" }} // 21:9
                 >
                     <iframe
                         src={embedUrl}
@@ -70,7 +67,6 @@ function renderPreview(content: string) {
             );
         }
 
-        // Testo normale (con break-words)
         return (
             <span key={i} className="break-words">
         {word + " "}
@@ -100,7 +96,7 @@ export default function ProfilePage() {
             const relay = relayInit(url);
             await relay.connect();
 
-            // 🔹 profilo kind:0
+            // profilo kind:0
             const subProfile = relay.sub([
                 { kinds: [0], authors: [npub as string], limit: 1 },
             ]);
@@ -119,7 +115,7 @@ export default function ProfilePage() {
             });
             activeSubs.push(subProfile);
 
-            // 🔹 post kind:30023
+            // post kind:30023
             const subPosts = relay.sub([
                 { kinds: [30023], authors: [npub as string], limit: 50 },
             ]);
@@ -130,7 +126,7 @@ export default function ProfilePage() {
                 const post: Post = {
                     id: event.id,
                     title: titleTag?.[1] || "Senza titolo",
-                    preview: event.content, // 👉 usiamo tutto il contenuto, lo renderizziamo
+                    preview: event.content,
                     priceSats: priceTag ? parseInt(priceTag[1]) : 0,
                     relays: [url],
                 };
@@ -154,91 +150,97 @@ export default function ProfilePage() {
     }, [npub]);
 
     return (
-        <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 px-6 py-10">
-            <h1 className="text-4xl font-extrabold text-gray-800 mb-10">Profilo ⚡</h1>
-
-            {/* Layout a 2 colonne */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-6xl">
-                {/* Colonna profilo */}
-                <div className="bg-white rounded-xl shadow-lg p-6 space-y-4 text-center">
+        <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-200 to-pink-200 px-6 py-12">
+            {/* Hero profilo */}
+            <div className="text-center mb-12">
+                <div className="inline-block bg-white/80 rounded-3xl shadow-xl p-8 relative">
                     {profile.picture && (
-                        <img
-                            src={profile.picture}
-                            alt="Foto profilo"
-                            className="w-32 h-32 mx-auto rounded-full shadow"
-                        />
+                        <div className="w-36 h-36 mx-auto mb-4 rounded-full border-4 border-purple-400 shadow overflow-hidden">
+                            <img
+                                src={profile.picture}
+                                alt="Foto profilo"
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
                     )}
 
-                    <h2 className="text-2xl font-bold text-gray-800">
+                    <h1 className="text-3xl font-extrabold text-gray-900">
                         {profile.name || "Anonimo"}
-                    </h2>
+                    </h1>
 
                     {profile.about && (
-                        <p className="text-gray-600 italic whitespace-pre-line">
+                        <p className="mt-3 text-gray-700 max-w-lg mx-auto italic whitespace-pre-line">
                             {profile.about}
                         </p>
                     )}
 
-                    <div className="text-sm text-gray-500 break-all">
-                        <span className="font-semibold">npub:</span> {npub}
-                    </div>
-
                     {profile.lud16 && (
-                        <p className="mt-2 text-purple-600 font-mono break-all">
+                        <p className="mt-3 text-purple-600 font-mono break-all">
                             ⚡ {profile.lud16}
                         </p>
                     )}
+
+                    <p className="mt-2 text-xs text-gray-500 break-all">
+                        npub: {npub}
+                    </p>
 
                     {loggedUser?.npub === npub && (
                         <div className="pt-4">
                             {!editing ? (
                                 <button
                                     onClick={() => setEditing(true)}
-                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
+                                    className="px-5 py-2 bg-purple-600 text-white rounded-lg shadow hover:bg-purple-700 transition"
                                 >
                                     ✏️ Modifica Profilo
                                 </button>
                             ) : (
                                 <EditProfile
                                     initial={{
-                                        name: profile.name || "",
-                                        about: profile.about || "",
-                                        picture: profile.picture || "",
-                                        lud16: profile.lud16 || "",
+                                        name: profile.name || '',
+                                        about: profile.about || '',
+                                        picture: profile.picture || '',
+                                        lud16: profile.lud16 || '',
+                                    }}
+                                    onSaved={(updated) => {
+                                        setProfile(updated);   // aggiorna subito i dati a schermo
+                                        setEditing(false);     // chiude il form
+                                        // 👉 qui puoi aggiungere showToast("✅ Profilo aggiornato con successo!");
                                     }}
                                 />
                             )}
                         </div>
                     )}
                 </div>
+            </div>
 
-                {/* Colonna post */}
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold mb-4">Post creati</h3>
+            {/* Post creati */}
+            <div className="max-w-5xl mx-auto bg-white/90 rounded-2xl shadow-lg p-8">
+                <h3 className="text-2xl font-bold mb-6">📚 Post creati</h3>
 
-                    {authorPosts.length === 0 ? (
-                        <p className="text-gray-500">Nessun contenuto trovato.</p>
-                    ) : (
-                        <div className="grid gap-6">
-                            {authorPosts.map((item) => (
-                                <Link key={item.id} href={`/content/${item.id}`}>
-                                    <div className="cursor-pointer border bg-gray-50 rounded-lg shadow p-4 text-left hover:bg-gray-100 transition">
-                                        <h2 className="text-lg font-bold mb-1">{item.title}</h2>
-                                        <div className="text-gray-600 text-sm line-clamp-3 break-words">
-                                            {renderPreview(item.preview)}
-                                        </div>
-                                        <p className="mt-2 text-sm text-gray-500">
-                                            Prezzo: {item.priceSats} sats
-                                        </p>
-                                        <p className="mt-1 text-xs text-gray-400 break-all">
-                                            Relay: {item.relays.join(", ")}
-                                        </p>
+                {authorPosts.length === 0 ? (
+                    <p className="text-gray-500">Nessun contenuto trovato.</p>
+                ) : (
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {authorPosts.map((item) => (
+                            <Link key={item.id} href={`/content/${item.id}`}>
+                                <div className="cursor-pointer rounded-xl border bg-gray-50 shadow hover:shadow-xl transition transform hover:-translate-y-1 hover:scale-[1.01] p-5">
+                                    <h2 className="text-lg font-bold text-gray-800 mb-2">
+                                        {item.title}
+                                    </h2>
+                                    <div className="text-gray-600 text-sm line-clamp-3 break-words">
+                                        {renderPreview(item.preview)}
                                     </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                                    <p className="mt-3 text-sm font-medium text-purple-600">
+                                        🔒 {item.priceSats} sats
+                                    </p>
+                                    <p className="mt-1 text-xs text-gray-400 break-all">
+                                        Relay: {item.relays.join(", ")}
+                                    </p>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
