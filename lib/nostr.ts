@@ -206,3 +206,37 @@ export function createUnsubscribeEvent(
         sk
     );
 }
+
+/**
+ * Crea un commento (kind: 1)
+ */
+export function createCommentEvent(
+    postId: string,
+    userPubkey: string,
+    content: string,
+    sk?: Uint8Array
+) {
+    return createEvent(
+        1,
+        content,
+        [["e", postId], ["p", userPubkey]],
+        sk
+    );
+}
+
+/**
+ * Crea una reazione (kind: 7)
+ */
+export function createReactionEvent(
+    postId: string,
+    userPubkey: string,
+    reaction: string = "❤️",
+    sk?: Uint8Array
+) {
+    return createEvent(
+        7,
+        reaction,
+        [["e", postId], ["p", userPubkey]],
+        sk
+    );
+}

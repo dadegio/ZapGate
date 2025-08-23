@@ -21,7 +21,7 @@ function renderContent(content: string) {
                     key={i}
                     src={word}
                     alt="media"
-                    className="my-3 mx-auto rounded-lg shadow max-w-md w-full h-auto"
+                    className="my-3 mx-auto rounded-xl shadow-lg max-w-md w-full h-auto"
                 />
             );
         }
@@ -33,7 +33,7 @@ function renderContent(content: string) {
                     key={i}
                     src={word}
                     controls
-                    className="my-3 mx-auto rounded-lg shadow max-w-2xl w-full h-auto"
+                    className="my-3 mx-auto rounded-xl shadow-lg max-w-2xl w-full h-auto"
                 />
             );
         }
@@ -51,7 +51,7 @@ function renderContent(content: string) {
                 >
                     <iframe
                         src={embedUrl}
-                        className="absolute top-0 left-0 w-full h-full rounded-lg shadow"
+                        className="absolute top-0 left-0 w-full h-full rounded-xl shadow-lg"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                     />
@@ -67,6 +67,11 @@ function renderContent(content: string) {
 export default function MyContentPage() {
     const [unlockedPosts, setUnlockedPosts] = useState<Post[]>([]);
     const [loggedUser, setLoggedUser] = useState<any>(null);
+
+    // 🔹 forza lo scroll in alto all'apertura
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, []);
 
     const loadUnlockedPosts = () => {
         try {
@@ -121,43 +126,52 @@ export default function MyContentPage() {
     }, []);
 
     return (
-        <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 px-6 py-10">
-            <h1 className="text-4xl font-extrabold text-gray-800 mb-6">
+        <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 px-6 py-12">
+            <h1 className="text-4xl font-extrabold text-gray-800 mb-10 drop-shadow-sm">
                 I miei contenuti sbloccati 🔓
             </h1>
 
             {unlockedPosts.length === 0 ? (
-                <p className="text-gray-500">Nessun contenuto sbloccato ancora. ⚡</p>
+                <p className="text-gray-600 bg-white/70 px-6 py-4 rounded-xl shadow">
+                    Nessun contenuto sbloccato ancora. ⚡
+                </p>
             ) : (
-                <div className="grid gap-6 w-full max-w-3xl">
+                <div className="grid gap-8 w-full max-w-4xl">
                     {unlockedPosts.map((item) => (
                         <div
                             key={item.id}
-                            className="border bg-white rounded-lg shadow p-6 text-left"
+                            className="relative border bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition transform hover:-translate-y-1"
                         >
-                            <h2 className="text-xl font-bold mb-2">{item.title}</h2>
+                            <h2 className="text-2xl font-bold mb-2 text-gray-800">
+                                {item.title}
+                            </h2>
 
-                            <div className="text-gray-700 mb-2 whitespace-pre-wrap break-words">
+                            <div className="text-gray-700 mb-3 whitespace-pre-wrap break-words leading-relaxed">
                                 {renderContent(item.fullContent)}
                             </div>
 
-                            <p className="mt-2 text-sm text-gray-500">
-                                Autore: {item.authorNpub?.slice(0, 12) || "sconosciuto"}…
-                            </p>
+                            <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+                                <span>👤 Autore: {item.authorNpub?.slice(0, 12) || "sconosciuto"}…</span>
+                                <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-700 font-medium shadow-sm">
+                                    🔒 {item.priceSats} sats
+                                </span>
+                            </div>
 
-                            <a
-                                href={`/content/${item.id}`}
-                                className="inline-block mt-3 text-purple-600 hover:text-purple-800 underline text-sm"
-                            >
-                                Vai al post →
-                            </a>
+                            <div className="flex items-center gap-4 mt-6">
+                                <a
+                                    href={`/content/${item.id}`}
+                                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold shadow hover:scale-105 transition"
+                                >
+                                    Vai al post →
+                                </a>
 
-                            <button
-                                onClick={() => removePost(item.id)}
-                                className="ml-4 inline-block text-red-500 hover:text-red-700 text-sm"
-                            >
-                                Rimuovi ❌
-                            </button>
+                                <button
+                                    onClick={() => removePost(item.id)}
+                                    className="px-4 py-2 rounded-lg bg-red-500 text-white font-semibold shadow hover:bg-red-600 transition"
+                                >
+                                    ❌ Rimuovi
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

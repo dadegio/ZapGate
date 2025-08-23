@@ -1,4 +1,7 @@
+// app/page.tsx (Home)
+
 'use client'
+
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { relayInit, type Sub } from 'nostr-tools'
@@ -21,14 +24,14 @@ interface ProfileData {
     lud16?: string
 }
 
-export default function Page() {
+export default function HomePage() {
     const [loggedUser, setLoggedUser] = useState<any>(null)
     const [profile, setProfile] = useState<ProfileData>({})
     const [allContent, setAllContent] = useState<Post[]>([])
     const [selectedRelay, setSelectedRelay] = useState<string>('all')
     const [unlockedIds, setUnlockedIds] = useState<string[]>([])
 
-    // Recupera utente loggato
+    // ✅ Recupera utente loggato
     useEffect(() => {
         const data = sessionStorage.getItem('loggedInUser')
         if (data) {
@@ -38,42 +41,45 @@ export default function Page() {
         }
     }, [])
 
-    // Carica contenuti sbloccati da localStorage
+    // ✅ Contenuti sbloccati da localStorage
     useEffect(() => {
-        const unlocked = JSON.parse(localStorage.getItem('unlockedContent') || '[]')
-        setUnlockedIds(unlocked)
+        setUnlockedIds(JSON.parse(localStorage.getItem('unlockedContent') || '[]'))
     }, [])
 
-    // 🔹 Recupera profilo kind:0 dell’utente loggato
+    // ✅ Recupera profilo kind:0 dell’utente loggato
     useEffect(() => {
         if (!loggedUser?.npub) return
         const activeSubs: Sub[] = []
 
         RELAYS.forEach(async ({ url }) => {
-            const relay = relayInit(url)
-            await relay.connect()
+            try {
+                const relay = relayInit(url)
+                await relay.connect()
 
-            const sub = relay.sub([{ kinds: [0], authors: [loggedUser.npub], limit: 1 }])
-            sub.on('event', (event) => {
-                try {
-                    const metadata = JSON.parse(event.content)
-                    setProfile({
-                        name: metadata.name,
-                        about: metadata.about,
-                        picture: metadata.picture,
-                        lud16: metadata.lud16,
-                    })
-                } catch (e) {
-                    console.warn('Errore parsing metadata kind:0', e)
-                }
-            })
-            activeSubs.push(sub)
+                const sub = relay.sub([{ kinds: [0], authors: [loggedUser.npub], limit: 1 }])
+                sub.on('event', (event) => {
+                    try {
+                        const metadata = JSON.parse(event.content)
+                        setProfile({
+                            name: metadata.name,
+                            about: metadata.about,
+                            picture: metadata.picture,
+                            lud16: metadata.lud16,
+                        })
+                    } catch (e) {
+                        console.warn('Errore parsing metadata kind:0', e)
+                    }
+                })
+                activeSubs.push(sub)
+            } catch (err) {
+                console.warn('❌ Errore connessione relay', url, err)
+            }
         })
 
         return () => activeSubs.forEach((s) => s.unsub())
     }, [loggedUser?.npub])
 
-    // 🔹 Carica post kind:30023
+    // ✅ Carica post kind:30023
     useEffect(() => {
         if (!loggedUser) return
         setAllContent([])
@@ -84,52 +90,51 @@ export default function Page() {
         const activeSubs: Sub[] = []
 
         relaysToUse.forEach(async (url) => {
-            const relay = relayInit(url)
-            await relay.connect()
+            try {
+                const relay = relayInit(url)
+                await relay.connect()
 
-            const sub = relay.sub([{ kinds: [30023], limit: 50 }])
+                const sub = relay.sub([{ kinds: [30023], limit: 50 }])
+                sub.on('event', (event) => {
+                    const titleTag = event.tags.find((t) => t[0] === 'title')
+                    const priceTag = event.tags.find((t) => t[0] === 'price_sats')
 
-            sub.on('event', (event) => {
-                const titleTag = event.tags.find((t) => t[0] === 'title')
-                const priceTag = event.tags.find((t) => t[0] === 'price_sats')
-
-                setAllContent((prev) => {
-                    const existing = prev.find((p) => p.id === event.id)
-
-                    if (existing) {
-                        // già esiste → aggiorna relay se mancante
-                        if (!existing.relays.includes(url)) {
-                            return prev.map((p) =>
-                                p.id === event.id ? { ...p, relays: [...p.relays, url] } : p
-                            )
+                    setAllContent((prev) => {
+                        const existing = prev.find((p) => p.id === event.id)
+                        if (existing) {
+                            if (!existing.relays.includes(url)) {
+                                return prev.map((p) =>
+                                    p.id === event.id ? { ...p, relays: [...p.relays, url] } : p
+                                )
+                            }
+                            return prev
                         }
-                        return prev
-                    }
 
-                    // nuovo post
-                    const previewText = event.content
-                        .split(' ')
-                        .slice(0, 20)
-                        .join(' ')
-                        .concat('...')
+                        const previewText = event.content
+                            .split(' ')
+                            .slice(0, 20)
+                            .join(' ')
+                            .concat('...')
 
-                    const post: Post = {
-                        id: event.id,
-                        title: titleTag?.[1] || 'Senza titolo',
-                        preview: previewText,
-                        fullContent: event.content,
-                        priceSats: priceTag ? parseInt(priceTag[1]) : 0,
-                        authorNpub: event.pubkey,
-                        relays: [url],
-                    }
+                        const post: Post = {
+                            id: event.id,
+                            title: titleTag?.[1] || 'Senza titolo',
+                            preview: previewText,
+                            fullContent: event.content,
+                            priceSats: priceTag ? parseInt(priceTag[1]) : 0,
+                            authorNpub: event.pubkey,
+                            relays: [url],
+                        }
 
-                    return [post, ...prev]
+                        return [post, ...prev]
+                    })
                 })
-            })
 
-            sub.on('eose', () => console.log(`✅ Fine eventi storici da ${url}`))
-
-            activeSubs.push(sub)
+                sub.on('eose', () => console.log(`✅ Fine eventi da ${url}`))
+                activeSubs.push(sub)
+            } catch (err) {
+                console.warn('❌ Errore caricamento da relay', url, err)
+            }
         })
 
         return () => activeSubs.forEach((s) => s.unsub())
@@ -137,12 +142,15 @@ export default function Page() {
 
     if (!loggedUser) return null
 
-    // ✅ filtro finale: escludi i post creati dall'utente stesso
-    const filteredContent =
-        selectedRelay === 'all'
-            ? allContent
-            : allContent.filter((item) => item.relays.includes(selectedRelay))
+    // ✅ Filtro finale
+    let filteredContent = allContent
+    if (selectedRelay !== 'all') {
+        filteredContent = filteredContent.filter((item) =>
+            item.relays.includes(selectedRelay)
+        )
+    }
 
+    // escludi post dell’utente stesso
     const visibleContent = filteredContent.filter(
         (item) => item.authorNpub !== loggedUser.npub
     )
@@ -160,14 +168,13 @@ export default function Page() {
 
             <main className="max-w-5xl mx-auto px-6 pb-16">
                 {/* ✅ Filtro relay */}
-                <div className="mb-6">
-                    <label className="mr-2 font-medium">Filtro relay:</label>
+                <div className="flex justify-end mb-6">
                     <select
                         value={selectedRelay}
                         onChange={(e) => setSelectedRelay(e.target.value)}
                         className="border px-3 py-1 rounded"
                     >
-                        <option value="all">Tutti</option>
+                        <option value="all">Tutti i relay</option>
                         {RELAYS.map((r) => (
                             <option key={r.url} value={r.url}>
                                 {r.name}
@@ -177,12 +184,13 @@ export default function Page() {
                 </div>
 
                 {visibleContent.length === 0 ? (
-                    <p className="text-center text-gray-600">Nessun contenuto disponibile.</p>
+                    <p className="text-center text-gray-600">
+                        Nessun contenuto disponibile.
+                    </p>
                 ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
                         {visibleContent.map((item) => {
                             const isUnlocked = unlockedIds.includes(item.id)
-
                             return (
                                 <Link key={item.id} href={`/content/${item.id}`}>
                                     <div className="bg-white/90 rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] transition transform p-6 cursor-pointer relative overflow-hidden backdrop-blur-sm">
@@ -196,7 +204,6 @@ export default function Page() {
                                         <span className="inline-block mt-4 bg-gradient-to-r from-purple-400 to-pink-400 text-white text-sm font-semibold px-4 py-1 rounded-full shadow">
                       {isUnlocked ? '✅ Sbloccato' : `🔒 ${item.priceSats} sats`}
                     </span>
-                                        {/* mostra la lista relay */}
                                         <div className="text-xs text-gray-500 mt-2">
                                             {item.relays.join(', ')}
                                         </div>

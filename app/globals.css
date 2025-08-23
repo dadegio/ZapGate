@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 👇 transizione globale per dark/light */
+html {
+    @apply transition-colors duration-300 ease-in-out;
+}
+
 @layer utilities {
     .animate-fadeIn {
         animation: fadeIn 0.6s ease-in-out;
@@ -17,4 +22,8 @@
             transform: translateY(0);
         }
     }
+}
+
+html {
+    @apply transition-colors duration-300 ease-in-out;
 }

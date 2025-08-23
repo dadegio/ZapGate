@@ -25,7 +25,7 @@ export default function ContentPage() {
     const [loggedUser, setLoggedUser] = useState<any>(null);
     const [item, setItem] = useState<Post | null>(null);
 
-    // ✅ recupera utente loggato
+    // 🔹 recupera utente loggato
     useEffect(() => {
         const data = sessionStorage.getItem("loggedInUser");
         if (data) {
@@ -35,39 +35,34 @@ export default function ContentPage() {
         }
     }, [router]);
 
+    // 🔹 forza lo scroll in alto all'apertura
     useEffect(() => {
-        // 👇 forza lo scroll all'inizio della pagina
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, []);
 
-
-    // ✅ carica contenuto da Nostr
+    // 🔹 carica contenuto da Nostr
     useEffect(() => {
-        if (!params?.id) return;
-        if (!loggedUser) return;
+        if (!params?.id || !loggedUser) return;
 
         const relayUrls = RELAYS.map((r) => r.url);
-
         const sub = pool.sub(relayUrls, [{ ids: [params.id as string] }]);
 
-        (sub as any).on("event", (event: any) => {
-            console.log("Evento ricevuto:", event);
+        sub.on("event", (event) => {
+            console.log("📩 Evento ricevuto:", event);
 
             setItem({
                 id: event.id,
-                title:
-                    event.tags.find((t: string[]) => t[0] === "title")?.[1] ||
-                    "Senza titolo",
+                title: event.tags.find((t) => t[0] === "title")?.[1] || "Senza titolo",
                 fullContent: event.content,
                 priceSats: parseInt(
-                    event.tags.find((t: string[]) => t[0] === "price_sats")?.[1] || "0",
+                    event.tags.find((t) => t[0] === "price_sats")?.[1] || "0",
                     10
                 ),
                 authorNpub: event.pubkey,
-                relays: RELAYS.map((r) => r.url),
+                relays: relayUrls,
             });
 
-            (sub as any).unsub();
+            sub.unsub(); // chiudo subito la sottoscrizione dopo aver trovato l'evento
         });
 
         sub.on("eose", () => {
