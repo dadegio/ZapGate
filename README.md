@@ -1,8 +1,4 @@
----
-title: Progetto Giordano Davide BREVE
----
-
-# Progetto Giordano Davide 
+# Progetto di Tesi triennale di Giordano Davide 
 
 Questa tesi affronta il problema di abilitare **micropagamenti verificabili** (“zaps”) nell’ecosistema **Nostr**, mantenendo al contempo sovranità dell’utente e un’ottima **esperienza d’uso**. La soluzione proposta, **ZapGate**, integra **NIP‑57** (ZapRequest/ZapReceipt) con la famiglia **LNURL** (LUD‑06 e LUD‑16) e **BOLT11**; opzionalmente impiega **NIP‑26** per la delega di firma degli eventi e **NIP‑42** per l’autenticazione verso i relay. I contributi sono:
 - (i) analisi dei NIP rilevanti e del flusso end‑to‑end 9734 → LNURL → BOLT11 → 9735;
@@ -887,3 +883,4 @@ I client Nostr esistenti integrano gli zap in modo eterogeneo (es. supporto a LN
   ]
 }
 ```
+
